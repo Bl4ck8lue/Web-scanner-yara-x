@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cloud Antivirus — Анализ файлов</title>
+  <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <!-- cloud + shield icon -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>CLOUD ANTIVIRUS</h1>
+      <div style="font-size:12px;color:var(--muted)">Облачный анализ загружаемых файлов</div>
+    </div>
+  </div>
+
+  <nav aria-label="Главная навигация">
+    <button id="enterBtn" title="Enter (вход/регистрация)">Enter</button>
+    <button id="historyBtn">History</button>
+    <button id="priceBtn">Price</button>
+    <button id="contactBtn">Contact</button>
+  </nav>
+</header>
+
+<main class="card" role="main" aria-labelledby="mainTitle">
+  <h2 id="mainTitle" class="hero-title">ANALYZING FILES</h2>
+
+  <div class="illu" aria-hidden="false">
+    <div class="cloud" role="img" aria-label="Облако анализа">
+      <div class="file-icon" aria-hidden="true">
+        <div class="corner"></div>
+        <div style="height:6px;width:60%;background:#f1f6ff;border-radius:4px"></div>
+        <div style="height:6px;width:80%;background:#f1f6ff;border-radius:4px"></div>
+        <div style="height:6px;width:40%;background:#f1f6ff;border-radius:4px"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div class="magnifier" aria-hidden="true">
+        <!-- rotate icon -->
+        <svg width="46" height="46" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#0b2540" stroke-width="1.6">
+          <path d="M21 21l-4.35-4.35" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M13 7a5 5 0 11-4 8.66" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress" aria-hidden="false" aria-label="Прогресс сканирования">
+    <div class="bar" id="progressBar" style="width:0%"></div>
+  </div>
+
+  <div class="status" id="statusText">Your files are waiting to be scanned...</div>
+
+  <div class="controls" role="group" aria-label="Управление">
+    <label class="file-label" for="fileInput" id="fileLabelBtn">Choose file</label>
+    <input type="file" id="fileInput" aria-label="Выбрать файл для сканирования" />
+    <button class="btn" id="scanBtn" disabled>Scan</button>
+    <button class="btn secondary" id="resetBtn">Reset</button>
+  </div>
+
+  <div class="result" id="resultText" aria-live="polite" style="display:none"></div>
+</main>
+
+<!-- Modal (Login/Register) -->
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal" role="document" aria-labelledby="modalTitle">
+    <button class="close-x" id="modalClose" aria-label="Close">&times;</button>
+    <h2 id="modalTitle">Вход / Регистрация</h2>
+    <div class="tabs" role="tablist">
+      <div class="tab active" data-tab="login" role="tab" aria-selected="true">Login</div>
+      <div class="tab" data-tab="register" role="tab" aria-selected="false">Register</div>
+    </div>
+
+    <form id="authForm">
+      <!-- login fields -->
+      <div id="loginFields">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" required placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" required placeholder="••••••••" />
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Sign in</button>
+        </div>
+      </div>
+
+      <!-- register fields (hidden by default) -->
+      <div id="registerFields" style="display:none">
+        <div class="form-group">
+          <label for="regName">Full name</label>
+          <input id="regName" type="text" required placeholder="Ivan Ivanov" />
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input id="regEmail" type="email" required placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input id="regPassword" type="password" required placeholder="Минимум 8 символов" />
+        </div>
+        <div class="form-group">
+          <label for="regPassword2">Confirm password</label>
+          <input id="regPassword2" type="password" required placeholder="Повторите пароль" />
+        </div>
+        <div class="actions">
+          <button id="regBtn" class="btn">Create account</button>
+        </div>
+      </div>
+    </form>
+
+    <div style="margin-top:10px;color:var(--muted);font-size:13px">
+      Это демонстрационная форма. В реальном приложении отправка должна идти на защищённый бэкенд.
+    </div>
+  </div>
+</div>
+
+<script>
+  // Элементы
+  const enterBtn = document.getElementById('enterBtn');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const modalClose = document.getElementById('modalClose');
+  const tabs = document.querySelectorAll('.tab');
+  const loginFields = document.getElementById('loginFields');
+
+  const registerFields = document.getElementById('registerFields');
+  const regBtn = document.getElementById('regBtn');
+  /*const regName = document.getElementById('regName');
+  const regEmail = document.getElementById('regEmail');
+  const regPassword = document.getElementById('regPassword');
+  const regPassword2 = document.getElementById('regPassword2');
+  */
+  const authForm = document.getElementById('authForm');
+
+  const fileInput = document.getElementById('fileInput');
+  const fileLabelBtn = document.querySelector('.file-label');
+  const scanBtn = document.getElementById('scanBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusText = document.getElementById('statusText');
+  const progressBar = document.getElementById('progressBar');
+  const resultText = document.getElementById('resultText');
+
+  // Modal open/close
+  function openModal(){
+    modalBackdrop.style.display = 'flex';
+    modalBackdrop.setAttribute('aria-hidden','false');
+    // focus on first input
+    setTimeout(()=>document.getElementById('loginEmail').focus(), 100);
+  }
+  function closeModal(){
+    modalBackdrop.style.display = 'none';
+    modalBackdrop.setAttribute('aria-hidden','true');
+  }
+
+  enterBtn.addEventListener('click', openModal);
+  modalClose.addEventListener('click', closeModal);
+  modalBackdrop.addEventListener('click', (e)=>{
+    if(e.target === modalBackdrop) closeModal();
+  });
+
+  // Tabs logic
+  tabs.forEach(t=>{
+    t.addEventListener('click', ()=>{
+      tabs.forEach(x=>{
+        x.classList.toggle('active', x===t);
+        x.setAttribute('aria-selected', x===t ? 'true' : 'false');
+      });
+      const tab = t.dataset.tab;
+      if(tab === 'login'){
+        loginFields.style.display = '';
+        registerFields.style.display = 'none';
+      } else {
+        loginFields.style.display = 'none';
+        registerFields.style.display = '';
+      }
+    });
+  });
+
+  // Auth form submit (demo)
+  authForm.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const activeTab = document.querySelector('.tab.active').dataset.tab;
+    if(activeTab === 'login'){
+      // simple demo validation
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPassword').value;
+      if(!email || !pass){ alert('Заполните поля'); return; }
+      // demo success
+      alert('Успешный вход (демо).');
+      closeModal();
+    } else {
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const p1 = document.getElementById('regPassword').value;
+      const p2 = document.getElementById('regPassword2').value;
+      if(!name || !email || !p1 || !p2){ alert('Заполните поля'); return; }
+      if(p1.length < 8){ alert('Пароль должен быть минимум 8 символов'); return; }
+      if(p1 !== p2){ alert('Пароли не совпадают'); return; }
+      closeModal();
+    }
+  });
+
+  regBtn.addEventListener('click', () => {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const p1 = document.getElementById('regPassword').value;
+    const p2 = document.getElementById('regPassword2').value;
+    if(!name || !email || !p1 || !p2){ alert('Заполните поля'); return; }
+    if(p1.length < 8){ alert('Пароль должен быть минимум 8 символов'); return; }
+    if(p1 !== p2){ alert('Пароли не совпадают'); return; }
+    
+    const form = new FormData();
+    form.append('name', name);
+    form.append('email', email);
+    form.append('p1', p1);
+        
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/reg', true);
+        
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === 4) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const res = JSON.parse(xhr.responseText);
+          alert(res.output);
+        }
+      }
+    };
+    xhr.send(form);
+    closeModal();
+  });
+
+  // File selection UI
+  fileLabelBtn.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', ()=>{
+    if(fileInput.files && fileInput.files.length){
+      const f = fileInput.files[0];
+      fileLabelBtn.textContent = `${f.name} (${Math.round(f.size/1024)} KB)`;
+      scanBtn.disabled = false;
+      statusText.textContent = 'Файл готов. Нажмите Scan для запуска анализа.';
+      resultText.style.display = 'none';
+      progressBar.style.width = '0%';
+    } else {
+      fileLabelBtn.textContent = 'Choose file';
+      scanBtn.disabled = true;
+      statusText.textContent = 'Your files are waiting to be scanned...';
+    }
+  });
+
+  // Simulated scanning
+  let scanning = false;
+  scanBtn.addEventListener('click', () => {
+  if (scanning) return;
+  if (!fileInput.files.length) { alert('Выберите файл'); return; }
+
+  const file = fileInput.files[0];
+  const form = new FormData();
+  form.append('file', file);
+
+  scanning = true;
+  scanBtn.disabled = true;
+  resetBtn.disabled = true;
+  resultText.style.display = 'none';
+  statusText.textContent = 'Uploading...';
+  progressBar.style.width = '0%';
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/scan', true);
+
+  // отслеживаем прогресс загрузки
+  xhr.upload.addEventListener('progress', (e) => {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 50); // резервируем 50% для загрузки
+      progressBar.style.width = percent + '%';
+    }
+  });
+
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4) {
+      // загрузка + сервер ответили
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          // если Python вернул JSON в stdout, он будет в res.output
+          let parsed = null;
+          try { parsed = JSON.parse(res.output); } catch(e) { parsed = null; }
+
+          if (parsed) {
+            // показываем результат сканера
+            if (parsed.infected) {
+              resultText.style.color = 'var(--danger)';
+              resultText.textContent = 'Внимание: файл содержит подозрительные сигнатуры — возможное вредоносное ПО.';
+            } else {
+              resultText.style.color = 'var(--success)';
+              resultText.textContent = res.output;
+            }
+            // покажем дополнительные данные
+            resultText.style.display = '';
+            // опционально: показать детальный JSON в консоли или как текст
+            console.log('scanner result:', parsed);
+          } else {
+            // если не удалось распарсить, покажем сырой output
+            resultText.style.color = 'var(--muted)';
+            resultText.textContent = res.output || '(no output)';
+            resultText.style.display = '';
+          }
+
+          statusText.textContent = 'Scan complete.';
+          progressBar.style.width = '100%';
+        } catch (err) {
+          statusText.textContent = 'Ошибка парсинга ответа от сервера';
+          resultText.style.display = '';
+          resultText.style.color = 'var(--danger)';
+          resultText.textContent = 'Server error: ' + err.message;
+        }
+      } else {
+        // ошибка сервера
+        statusText.textContent = 'Server error: ' + xhr.status;
+        resultText.style.display = '';
+        resultText.style.color = 'var(--danger)';
+        resultText.textContent = xhr.responseText || ('HTTP ' + xhr.status);
+      }
+
+      scanning = false;
+      resetBtn.disabled = false;
+      scanBtn.disabled = false;
+    } else {
+      // между загрузкой и готовностью можно показать "scanning..."
+      if (xhr.readyState === 2 || xhr.readyState === 3) {
+        // уменьшенно анимируем от 50% до 90% пока сервер думает
+        const cur = parseFloat(progressBar.style.width) || 0;
+        if (cur < 50) progressBar.style.width = '50%';
+        statusText.textContent = 'Scanning on server...';
+        // мелкая анимация к 90%
+        let p = Math.max(50, cur);
+        const tick = setInterval(() => {
+          if (p < 90) {
+            p += 1 + Math.random() * 2;
+            progressBar.style.width = Math.min(p, 90) + '%';
+          } else {
+            clearInterval(tick);
+          }
+        }, 200);
+      }
+    }
+  };
+
+  // посылаем
+  xhr.send(form);
+});
+
+  resetBtn.addEventListener('click', ()=>{
+    fileInput.value = '';
+    fileLabelBtn.textContent = 'Choose file';
+    scanBtn.disabled = true;
+    progressBar.style.width = '0%';
+    statusText.textContent = 'Your files are waiting to be scanned...';
+    resultText.style.display = 'none';
+  });
+
+  // Provide keyboard accessibility: Enter opens modal
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && document.activeElement === enterBtn){
+      openModal();
+    }
+    if(e.key === 'Escape'){
+      closeModal();
+    }
+  });
+
+  // Small polish: simulate initial gentle progress to show liveliness
+  (function gentlePulse(){
+    let p=0,dir=1;
+    setInterval(()=>{
+      p += dir*0.6;
+      if(p>8 || p<0) dir *= -1;
+      document.querySelector('.logo').style.transform = `translateY(${p}px)`;
+    }, 1200);
+  })();
+</script>
+
+</body>
+</html>
