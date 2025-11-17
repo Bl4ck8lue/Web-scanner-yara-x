@@ -1,0 +1,41 @@
+{
+  "version": "1.8.1",
+  "matches": [
+    {
+      "rule": "Andr_Adware_Kuguo_1",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37041",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37042",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37043",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37045",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37046",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37047",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37048",
+      "file": "/tmp/scan-1000882285-kolyan"
+    },
+    {
+      "rule": "Legacy_Trojan_Agent_37049",
+      "file": "/tmp/scan-1000882285-kolyan"
+    }
+  ]
+}
