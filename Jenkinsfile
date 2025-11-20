@@ -11,12 +11,12 @@ pipeline {
         }
         stage('Run'){
             steps {
-                sh 'python3 main.py'
+                sh 'go run main.go'
             }
         }
         stage('Run one more'){
             steps {
-                sh 'python3 script.py vlad pochta@yandex.ru qwerty'
+                sh 'python3 ./scripts/registr.py vlad pochta@yandex.ru qwerty'
             }
         }
         stage('SonarQube analysis') {
