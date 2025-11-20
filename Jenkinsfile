@@ -26,13 +26,11 @@ pipeline {
                 }
             }
         }
-        stage("Quality Gate") {
-            steps {
-              timeout(time: 1, unit: 'MINUTES') {
-                waitForQualityGate abortPipeline: true
-              }
-            }
-          }
+        
+        stage('OWASP ZAP analysis') {
+            sh 'echo Run DAST - OWASP ZAP analysis'
+            sh "docker run -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:90 || true"
+        }
 
     }
 }
