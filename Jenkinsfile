@@ -9,11 +9,11 @@ pipeline {
                 sh 'python3 --version'
             }
         }
-        stage('Run'){
+        /*stage('Run'){
             steps {
                 sh 'go run main.go'
             }
-        }
+        }*/
         stage('Run one more'){
             steps {
                 sh 'python3 ./scripts/registr.py vlad pochta@yandex.ru qwerty'
