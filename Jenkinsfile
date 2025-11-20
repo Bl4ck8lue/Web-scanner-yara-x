@@ -30,7 +30,7 @@ pipeline {
         stage('OWASP ZAP analysis') {
             steps {
                 sh 'echo Run DAST - OWASP ZAP analysis'
-                sh "docker run -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:90 || true"
+                sh "sudo docker run -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:90 || true"
             }
         }
 
