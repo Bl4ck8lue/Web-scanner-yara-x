@@ -26,6 +26,10 @@ var (
 	pythonBin   = "python3"
 	scriptPath  = "./scripts/analyze.py"
 	scriptPath1 = "./scripts/registr.py"
+<<<<<<< HEAD
+=======
+	scriptPath2 = "./scripts/signin.py"
+>>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
 	scanTimeout = 90 * time.Second
 )
 
@@ -35,6 +39,10 @@ func main() {
 	http.HandleFunc("/about", aboutHandler)
 	http.HandleFunc("/scan", scanHandler)
 	http.HandleFunc("/reg", regHandler)
+<<<<<<< HEAD
+=======
+	http.HandleFunc("/sign", signHandler)
+>>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
 
 	fmt.Println("Starting server at :8090")
 	if err := http.ListenAndServe(":8090", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -108,6 +116,52 @@ func regHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+<<<<<<< HEAD
+=======
+func signHandler(w http.ResponseWriter, r *http.Request) {
+	// Ограничить размер тела
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "request too large or malformed", http.StatusBadRequest)
+		return
+	}
+
+	email := r.FormValue("email")
+	password := r.FormValue("p1")
+
+	// запустить python скрипт с таймаутом
+	ctx, cancel := context.WithTimeout(context.Background(), scanTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, pythonBin, scriptPath2, email, password)
+	out, err := cmd.CombinedOutput()
+
+	fmt.Printf("sign in output:\n%s\n", string(out))
+
+	// подготовить код возврата
+	exitCode := 0
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			exitCode = ee.ExitCode()
+		} else {
+			http.Error(w, "failed to run scanner: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
+
+	// Формируем ответ — возвращаем stdout (ожидаем JSON от скрипта)
+	resp := map[string]any{
+		"exit_code": exitCode,
+		"output":    string(out),
+	}
+	//fmt.Println(string(out))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+>>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
 // scanHandler: принимает multipart form field "file", сохраняет временно, вызывает python скрипт,
 // ждёт результата и возвращает JSON с { exit_code, output }
 func scanHandler(w http.ResponseWriter, r *http.Request) {
