@@ -24,6 +24,8 @@
 
   <nav aria-label="Главная навигация">
     <button id="enterBtn" title="Enter (вход/регистрация)">Enter</button>
+    <span id="replacementText" style="display: none;">Button is hidden!</span>
+    <span id="exitBtn" style="display: none;">Exit</span>
     <button id="historyBtn">History</button>
     <button id="priceBtn">Price</button>
     <button id="contactBtn">Contact</button>
@@ -92,11 +94,7 @@
           <input id="loginPassword" type="password" required placeholder="••••••••" />
         </div>
         <div class="actions">
-<<<<<<< HEAD
-          <button type="submit" class="btn">Sign in</button>
-=======
           <button id="signBtn" type="submit" class="btn">Sign in</button>
->>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
         </div>
       </div>
 
@@ -132,7 +130,10 @@
 
 <script>
   // Элементы
+
+
   const enterBtn = document.getElementById('enterBtn');
+  const replaceTxt = document.getElementById('replacementText');
   const modalBackdrop = document.getElementById('modalBackdrop');
   const modalClose = document.getElementById('modalClose');
   const tabs = document.querySelectorAll('.tab');
@@ -146,10 +147,7 @@
   const regPassword2 = document.getElementById('regPassword2');
   */
   const authForm = document.getElementById('authForm');
-<<<<<<< HEAD
-=======
   const signBtn = document.getElementById('signBtn');
->>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
 
   const fileInput = document.getElementById('fileInput');
   const fileLabelBtn = document.querySelector('.file-label');
@@ -158,6 +156,95 @@
   const statusText = document.getElementById('statusText');
   const progressBar = document.getElementById('progressBar');
   const resultText = document.getElementById('resultText');
+  const exitBtn = document.getElementById('exitBtn');
+
+  // Проверка авторизации при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Создаем запрос на проверку авторизации
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                // Пользователь авторизован
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                // Пользователь не авторизован
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            // В случае ошибки показываем кнопку входа
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+
+// Функция для обновления интерфейса в зависимости от авторизации
+function updateAuthUI(isAuthenticated, email = '') {
+    if (isAuthenticated) {
+        enterBtn.style.display = 'none';
+        replaceTxt.style.display = 'inline';
+        replaceTxt.textContent = email;
+        exitBtn.style.display = 'inline'; // Показываем кнопку Exit
+    } else {
+        enterBtn.style.display = '';
+        replaceTxt.style.display = 'none';
+        exitBtn.style.display = 'none'; // Скрываем кнопку Exit
+    }
+}
+
+exitBtn.addEventListener('click', () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+        logoutUser();
+    }
+});
+
+function logoutUser() {
+    // Отправляем запрос на сервер для выхода
+    fetch('/logout', {
+        method: 'POST',
+        credentials: 'same-origin' // Чтобы отправлялись куки
+    })
+    .then(response => {
+        if (response.ok) {
+            // Успешный выход - обновляем UI
+            updateAuthUI(false);
+            // Очищаем поля формы входа
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            // Можно показать сообщение
+            alert('Вы успешно вышли из системы');
+        } else {
+            throw new Error('Logout failed');
+        }
+    })
+    .catch(error => {
+        console.error('Logout error:', error);
+        alert('Ошибка при выходе из системы');
+    });
+}
+
+// Используйте ее при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/check-auth')
+        .then(response => response.json())
+        .then(data => {
+            updateAuthUI(data.authenticated, data.email);
+        })
+        .catch(error => {
+            console.error('Auth check failed:', error);
+            updateAuthUI(false);
+        });
+});
 
   // Modal open/close
   function openModal(){
@@ -240,24 +327,15 @@
       if (xhr.readyState === 4) {
         if (xhr.status >= 200 && xhr.status < 300) {
           const res = JSON.parse(xhr.responseText);
-<<<<<<< HEAD
-=======
           // Print output from /reg in main.go
->>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
           alert(res.output);
         }
       }
     };
-<<<<<<< HEAD
-=======
-
->>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
     xhr.send(form);
     closeModal();
   });
 
-<<<<<<< HEAD
-=======
   signBtn.addEventListener('click', ()=> {
     const loginEmail = document.getElementById('loginEmail').value.trim();
     const loginPassword = document.getElementById('loginPassword').value.trim();
@@ -265,26 +343,33 @@
     const form = new FormData();
     form.append('email', loginEmail);
     form.append('p1', loginPassword);
-        
+    
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/sign', true);
-        
+    
     xhr.onreadystatechange = () => {
-      if (xhr.readyState === 4) {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const res = JSON.parse(xhr.responseText);
-          // Print output from /reg in main.go
-          alert(res.output);
+        if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    if (res.output == 1) {
+                        // Успешный вход
+                        updateAuthUI(true, loginEmail);
+                        closeModal();
+                    } else {
+                        alert('Ошибка входа: неверные данные');
+                    }
+                } catch (e) {
+                    console.error('Error parsing response:', e);
+                    alert('Ошибка при обработке ответа сервера');
+                }
+            }
         }
-      }
     };
     
     xhr.send(form);
-    closeModal();
+});
 
-  })
-
->>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
   // File selection UI
   fileLabelBtn.addEventListener('click', ()=> fileInput.click());
   fileInput.addEventListener('change', ()=>{

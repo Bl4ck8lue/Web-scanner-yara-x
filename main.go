@@ -43,6 +43,8 @@ func main() {
 	http.HandleFunc("/scan", scanHandler)
 	http.HandleFunc("/reg", regHandler)
 	http.HandleFunc("/sign", signHandler)
+	http.HandleFunc("/api/check-auth", checkAuthHandler)
+	http.HandleFunc("/logout", logoutHandler)
 
 	fmt.Println("Starting server at :8090")
 	if err := http.ListenAndServe(":8090", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -50,17 +52,41 @@ func main() {
 	}
 }
 
+func checkAuthHandler(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("email")
+	if err != nil {
+		resp := map[string]any{
+			"authenticated": false,
+			"email":         "",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	resp := map[string]any{
+		"authenticated": true,
+		"email":         c.Value,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 func home(w http.ResponseWriter, r *http.Request) {
+
 	path := filepath.Join(templateDir, "index.html")
 	tmpl, err := template.ParseFiles(path)
+
 	if err != nil {
 		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	if err := tmpl.Execute(w, nil); err != nil {
 		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 }
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +175,44 @@ func regHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(resp)*/
 }
 
-func signInDB(email string, pass string) {
+func setCookieDB(email string, w http.ResponseWriter, r *http.Request) {
+	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
+	if err != nil {
+		log.Printf("Не удалось подключиться к БД: %v", err)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	// Удаляем старые сессии для этого пользователя
+	_, err = conn.Exec(context.Background(),
+		"DELETE FROM cookie WHERE email = $1",
+		email)
+	if err != nil {
+		log.Printf("Ошибка удаления старых сессий: %v", err)
+	}
+
+	// Создаем новую сессию
+	cookie := http.Cookie{
+		Name:     "email",
+		Value:    email,
+		Path:     "/",
+		MaxAge:   3600,
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	}
+	http.SetCookie(w, &cookie)
+
+	// Сохраняем в БД
+	_, err = conn.Exec(context.Background(),
+		"INSERT INTO cookie (email, value, maxage) VALUES ($1, $2, $3)",
+		email, email, 3600)
+	if err != nil {
+		log.Printf("Ошибка сохранения cookie в БД: %v", err)
+	}
+}
+
+func signInDB(email string, pass string, w http.ResponseWriter, r *http.Request) int {
 	//postgres://ilya:4suh12iiyu@localhost:5432/web_scanner
 	//postrges://DB_USER:DB_PASSWORD@DB_HOST:5432/DB_NAME
 	// Устанавливаем соединение с базой данных
@@ -172,19 +235,28 @@ func signInDB(email string, pass string) {
 	}
 
 	var chpass string
-	err = conn.QueryRow(context.Background(), "select $1 from reg_users", pass).Scan(&chpass)
+	err = conn.QueryRow(context.Background(), "select pass from reg_users where email = $1", email).Scan(&chpass)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	res := 1
 	mdpass := md5.Sum([]byte(pass))
 	passmd := hex.EncodeToString(mdpass[:])
+
+	fmt.Println(passmd)
+	fmt.Println(chpass)
+
 	if chpass == passmd {
 		fmt.Println("Hello, " + email)
+		setCookieDB(email, w, r)
+	} else {
+		return 225
 	}
 
 	// Выводим результат
 	fmt.Println(greeting)
+	return res
 }
 
 func signHandler(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +270,15 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("p1")
 
-	signInDB(email, password)
+	zxc := signInDB(email, password, w, r)
+
+	resp := map[string]any{
+		"exit_code": "200",
+		"output":    zxc,
+	}
+	//fmt.Println(string(out))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 
 	/*
 		// запустить python скрипт с таймаутом
@@ -231,6 +311,49 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 		//fmt.Println(string(out))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)*/
+}
+
+// Добавьте новый обработчик для выхода
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	// Удаляем куку, устанавливая MaxAge в -1
+	cookie := &http.Cookie{
+		Name:     "email",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: false,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	}
+	http.SetCookie(w, cookie)
+
+	// Также можно удалить запись из БД, если это необходимо
+	// deleteCookieFromDB(r) - опционально
+
+	// Возвращаем успешный статус
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Logged out successfully"))
+}
+
+// Функция для удаления куки из БД (опционально)
+func deleteCookieFromDB(r *http.Request) {
+	// Получаем email из куки перед удалением
+	if cookie, err := r.Cookie("email"); err == nil {
+		conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
+		if err != nil {
+			log.Printf("Ошибка подключения к БД при выходе: %v", err)
+			return
+		}
+		defer conn.Close(context.Background())
+
+		// Удаляем запись из таблицы cookie или устанавливаем maxage = -1
+		_, err = conn.Exec(context.Background(),
+			"UPDATE cookie SET maxage = -1 WHERE email = $1",
+			cookie.Value)
+		if err != nil {
+			log.Printf("Ошибка обновления cookie в БД: %v", err)
+		}
+	}
 }
 
 // scanHandler: принимает multipart form field "file", сохраняет временно, вызывает python скрипт,

@@ -19,19 +19,11 @@ def main(name1, email1, passw):
 
     conn.autocommit = True
 
-<<<<<<< HEAD
-    sql = "select * from clients"
-
-    # TRUNCATE TABLE clients RESTART IDENTITY; --> delete all info from table and start from 0
-
-    cursor.execute("select count(*) from clients where email = %s", (email1,))
-=======
     sql = "select * from reg_users"
 
     # TRUNCATE TABLE clients RESTART IDENTITY; --> delete all info from table and start from 0
 
     cursor.execute("select count(*) from reg_users where email = %s", (email1,))
->>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
     # cursor.execute(sql)
     # print(cursor.fetchall()[0][0])
     if cursor.fetchall()[0][0] != 0:
@@ -39,11 +31,7 @@ def main(name1, email1, passw):
     else:
         #print("not exist")
         try:
-<<<<<<< HEAD
-            cursor.execute("insert into clients (name, email, hash_pass) values (%s, %s, md5(%s))", (person))
-=======
             cursor.execute("insert into reg_users (name, email, pass) values (%s, %s, md5(%s))", (person))
->>>>>>> 67b6e45 (add js sign in btn and logic without adding cookie)
             print("Person added")
         except Exception:
             traceback.print_exc()
