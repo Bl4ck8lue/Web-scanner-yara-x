@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cloud Antivirus — Анализ файлов</title>
+  <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <!-- cloud + shield icon -->
+      <svg id="homeBtn" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>CLOUD ANTIVIRUS</h1>
+      <div style="font-size:12px;color:var(--muted)">Облачный анализ загружаемых файлов</div>
+    </div>
+  </div>
+
+  <nav aria-label="Главная навигация">
+    <button id="enterBtn" title="Enter (вход/регистрация)">Enter</button>
+    <button id="replacementText" style="display: none;">Button is hidden!</button>
+    <button id="exitBtn">Exit</button>
+    <button id="historyBtn">History</button>
+    <button id="priceBtn">Price</button>
+    <button id="contactBtn">Contact</button>
+  </nav>
+</header>
+
+<main class="card" role="main" aria-labelledby="mainTitle">
+  <h2 id="mainTitle" class="hero-title">Administration Page</h2>
+
+  <div class="illu">
+    <textarea style="border-radius:4px;resize: none;" id="enterRules" name="enterRules" rows="25" cols="50" placeholder="Enter your rule..."></textarea>
+    <h3>or</h3>
+    <label class="file-label" for="fileInput" id="fileLabelBtn">Upload new rules</label>
+    <input type="file" id="fileInput" aria-label="Выбрать файл для сканирования" />
+  </div>
+
+  <div class="illu">
+    <button class="btn" id="chalBtn" disabled>Check rules and load</button>
+  </div>
+  
+</main>
+
+<script>
+  const enterBtn = document.getElementById('enterBtn');
+  const exitBtn = document.getElementById('exitBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const homeBtn = document.getElementById('homeBtn');
+
+  const replaceTxt = document.getElementById('replacementText');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const modalClose = document.getElementById('modalClose');
+
+  const modalBackdrop1 = document.getElementById('modalBackdrop1');
+  const modalClose1 = document.getElementById('modalClose1');
+
+  const tabs = document.querySelectorAll('.tab');
+  const loginFields = document.getElementById('loginFields');
+
+  const registerFields = document.getElementById('registerFields');
+  const regBtn = document.getElementById('regBtn');
+
+  const authForm = document.getElementById('authForm');
+  const signBtn = document.getElementById('signBtn');
+
+  const fileInput = document.getElementById('fileInput');
+  const fileLabelBtn = document.querySelector('.file-label');
+  const scanBtn = document.getElementById('scanBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusText = document.getElementById('statusText');
+  const progressBar = document.getElementById('progressBar');
+  const resultText = document.getElementById('resultText');
+
+  
+
+  // Проверка авторизации при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Создаем запрос на проверку авторизации
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                // Пользователь авторизован
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                // Пользователь не авторизован
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            // В случае ошибки показываем кнопку входа
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+
+// Функция для обновления интерфейса в зависимости от авторизации
+function updateAuthUI(isAuthenticated, email = '') {
+    if (isAuthenticated) {
+        enterBtn.style.display = 'none';
+        replaceTxt.style.display = 'inline';
+        replaceTxt.textContent = email;
+        exitBtn.style.display = 'inline'; // Показываем кнопку Exit
+    } else {
+        enterBtn.style.display = '';
+        replaceTxt.style.display = 'none';
+        exitBtn.style.display = 'none'; // Скрываем кнопку Exit
+    }
+}
+
+
+exitBtn.addEventListener('click', () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+        logoutUser();
+    }
+});
+
+homeBtn.addEventListener('click', () => {
+  window.location.href = '/';
+})
+
+
+function logoutUser() {
+    // Отправляем запрос на сервер для выхода
+    fetch('/logout', {
+        method: 'POST',
+        credentials: 'same-origin' // Чтобы отправлялись куки
+    })
+    .then(response => {
+        if (response.ok) {
+            // Успешный выход - обновляем UI
+            updateAuthUI(false);
+            // Можно показать сообщение
+            alert('Вы успешно вышли из системы');
+            window.location.href = '/';
+        } else {
+            throw new Error('Logout failed');
+        }
+    })
+    .catch(error => {
+        console.error('Logout error:', error);
+        alert('Ошибка при выходе из системы');
+    });
+}
+
+// File selection UI
+  fileLabelBtn.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', ()=>{
+    if(fileInput.files && fileInput.files.length){
+      const f = fileInput.files[0];
+      fileLabelBtn.textContent = `${f.name} (${Math.round(f.size/1024)} KB)`;
+      scanBtn.disabled = false;
+      statusText.textContent = 'Файл готов. Нажмите Scan для запуска анализа.';
+      resultText.style.display = 'none';
+      progressBar.style.width = '0%';
+    } else {
+      fileLabelBtn.textContent = 'Choose file';
+      scanBtn.disabled = true;
+      statusText.textContent = 'Your files are waiting to be scanned...';
+    }
+  });
+
+  // Tabs logic
+  tabs.forEach(t=>{
+    t.addEventListener('click', ()=>{
+      tabs.forEach(x=>{
+        x.classList.toggle('active', x===t);
+        x.setAttribute('aria-selected', x===t ? 'true' : 'false');
+      });
+      const tab = t.dataset.tab;
+      if(tab === 'login'){
+        loginFields.style.display = '';
+        registerFields.style.display = 'none';
+      } else {
+        loginFields.style.display = 'none';
+        registerFields.style.display = '';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

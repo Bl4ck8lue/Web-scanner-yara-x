@@ -7,12 +7,11 @@
   <link rel="stylesheet" href="/static/index.css">
 </head>
 <body>
-
 <header>
   <div class="brand">
     <div class="logo" aria-hidden="true">
       <!-- cloud + shield icon -->
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg id="homeBtn" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
       </svg>
     </div>
@@ -24,10 +23,10 @@
 
   <nav aria-label="Главная навигация">
     <button id="enterBtn" title="Enter (вход/регистрация)">Enter</button>
-    <span id="replacementText" style="display: none;">Button is hidden!</span>
-    <span id="exitBtn" style="display: none;">Exit</span>
+    <button id="replacementText" href="/settings" style="display: none;">Button is hidden!</button>
+    <button id="exitBtn" style="display: none;">Exit</button>
     <button id="historyBtn">History</button>
-    <button id="priceBtn">Price</button>
+    <button id="settingsBtn">Settings</button>
     <button id="contactBtn">Contact</button>
   </nav>
 </header>
@@ -117,35 +116,36 @@
           <input id="regPassword2" type="password" required placeholder="Повторите пароль" />
         </div>
         <div class="actions">
+          <div style="margin-top:10px;color:var(--muted);font-size:13px">
+          1. ФИО вводится через пробел;
+          2. Пароль должен быть не менее 8 символов и должен содержать спец. символы (!,@,#,$,&).
+        </div>
           <button id="regBtn" class="btn">Create account</button>
         </div>
       </div>
     </form>
-
-    <div style="margin-top:10px;color:var(--muted);font-size:13px">
-      Это демонстрационная форма. В реальном приложении отправка должна идти на защищённый бэкенд.
-    </div>
   </div>
 </div>
 
 <script>
-  // Элементы
-
-
   const enterBtn = document.getElementById('enterBtn');
+  const exitBtn = document.getElementById('exitBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const homeBtn = document.getElementById('homeBtn');
+
   const replaceTxt = document.getElementById('replacementText');
   const modalBackdrop = document.getElementById('modalBackdrop');
   const modalClose = document.getElementById('modalClose');
+
+  const modalBackdrop1 = document.getElementById('modalBackdrop1');
+  const modalClose1 = document.getElementById('modalClose1');
+
   const tabs = document.querySelectorAll('.tab');
   const loginFields = document.getElementById('loginFields');
 
   const registerFields = document.getElementById('registerFields');
   const regBtn = document.getElementById('regBtn');
-  /*const regName = document.getElementById('regName');
-  const regEmail = document.getElementById('regEmail');
-  const regPassword = document.getElementById('regPassword');
-  const regPassword2 = document.getElementById('regPassword2');
-  */
+
   const authForm = document.getElementById('authForm');
   const signBtn = document.getElementById('signBtn');
 
@@ -156,7 +156,6 @@
   const statusText = document.getElementById('statusText');
   const progressBar = document.getElementById('progressBar');
   const resultText = document.getElementById('resultText');
-  const exitBtn = document.getElementById('exitBtn');
 
   // Проверка авторизации при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
@@ -202,11 +201,62 @@ function updateAuthUI(isAuthenticated, email = '') {
     }
 }
 
+// Используйте ее при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/check-auth')
+        .then(response => response.json())
+        .then(data => {
+            updateAuthUI(data.authenticated, data.email);
+            document.getElementById('regName').value = '';
+            document.getElementById('regEmail').value = '';
+        })
+        .catch(error => {
+            console.error('Auth check failed:', error);
+            updateAuthUI(false);
+        });
+});
+
 exitBtn.addEventListener('click', () => {
     if (confirm('Вы уверены, что хотите выйти?')) {
         logoutUser();
     }
 });
+
+homeBtn.addEventListener('click', () => {
+  window.location.href = '/';
+})
+
+replaceTxt.addEventListener('click', () => {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Создаем запрос на проверку авторизации
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                // Пользователь авторизован
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                // Пользователь не авторизован
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            // В случае ошибки показываем кнопку входа
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+  window.location.href = '/settings';
+})
 
 function logoutUser() {
     // Отправляем запрос на сервер для выхода
@@ -233,18 +283,7 @@ function logoutUser() {
     });
 }
 
-// Используйте ее при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/check-auth')
-        .then(response => response.json())
-        .then(data => {
-            updateAuthUI(data.authenticated, data.email);
-        })
-        .catch(error => {
-            console.error('Auth check failed:', error);
-            updateAuthUI(false);
-        });
-});
+
 
   // Modal open/close
   function openModal(){
@@ -329,6 +368,12 @@ document.addEventListener('DOMContentLoaded', function() {
           const res = JSON.parse(xhr.responseText);
           // Print output from /reg in main.go
           alert(res.output);
+          document.getElementById('regName').value = '';
+          document.getElementById('regEmail').value = '';
+          document.getElementById('regPassword').value = '';
+          document.getElementById('regPassword2').value = '';
+
+          
         }
       }
     };
@@ -410,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // отслеживаем прогресс загрузки
   xhr.upload.addEventListener('progress', (e) => {
     if (e.lengthComputable) {
-      const percent = Math.round((e.loaded / e.total) * 50); // резервируем 50% для загрузки
+      const percent = Math.round((e.loaded / e.total)); // резервируем 50% для загрузки
       progressBar.style.width = percent + '%';
     }
   });
@@ -507,16 +552,6 @@ document.addEventListener('DOMContentLoaded', function() {
       closeModal();
     }
   });
-
-  // Small polish: simulate initial gentle progress to show liveliness
-  (function gentlePulse(){
-    let p=0,dir=1;
-    setInterval(()=>{
-      p += dir*0.6;
-      if(p>8 || p<0) dir *= -1;
-      document.querySelector('.logo').style.transform = `translateY(${p}px)`;
-    }, 1200);
-  })();
 </script>
 
 </body>

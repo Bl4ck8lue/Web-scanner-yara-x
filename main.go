@@ -45,10 +45,26 @@ func main() {
 	http.HandleFunc("/sign", signHandler)
 	http.HandleFunc("/api/check-auth", checkAuthHandler)
 	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/settings", settingsHandler)
 
-	fmt.Println("Starting server at :8090")
-	if err := http.ListenAndServe(":8090", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	fmt.Println("Starting server at :8085")
+	if err := http.ListenAndServe(":8085", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("server error:", err)
+	}
+}
+
+func settingsHandler(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(templateDir, "indexAd.html")
+	tmpl, err := template.ParseFiles(path)
+
+	if err != nil {
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, nil); err != nil {
+		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -93,7 +109,7 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "This is the about page.")
 }
 
-func regInDB(name string, email string, pass string) {
+func regInDB(name string, email string, pass string) int {
 	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
 	if err != nil {
 		log.Fatal("Hе удалось подключиться к БД:", err)
@@ -120,6 +136,7 @@ func regInDB(name string, email string, pass string) {
 
 	// Выводим результат
 	fmt.Println("Added")
+	return 1
 }
 
 func regHandler(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +152,17 @@ func regHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("p1")
 
-	regInDB(name, email, password)
+	checkReg := regInDB(name, email, password)
+
+	if checkReg == 1 {
+		resp := map[string]any{
+			"exit_code": "200",
+			"output":    "You have just registered!\nPlease log in to the website.",
+		}
+		//fmt.Println(string(out))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}
 
 	/*
 		// запустить python скрипт с таймаутом
@@ -328,7 +355,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, cookie)
 
 	// Также можно удалить запись из БД, если это необходимо
-	// deleteCookieFromDB(r) - опционально
+	deleteCookieFromDB(r)
 
 	// Возвращаем успешный статус
 	w.WriteHeader(http.StatusOK)

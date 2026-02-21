@@ -148,6 +148,7 @@
       background:var(--card);width:420px;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(2,6,23,0.45);
     }
     .modal h2{margin:0 0 10px}
+
     .tabs{display:flex;gap:8px;margin-bottom:12px}
     .tab{flex:1;padding:10px;border-radius:8px;background:#f5f7fb;border:1px solid rgba(10,20,40,0.03);text-align:center;cursor:pointer}
     .tab.active{background:linear-gradient(180deg,#e9f2ff,#f7fbff);border:1px solid rgba(43,123,228,0.12);color:var(--primary);font-weight:700}
@@ -156,6 +157,22 @@
     .form-group input{padding:10px;border-radius:8px;border:1px solid #e6eefb;font-size:15px}
     .modal .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
     .close-x{position:absolute;right:18px;top:18px;background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:20px}
+
+
+    .modal-backdrop1{
+      position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:60;
+    }
+    .modal1{
+      background:var(--card);width:420px;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(2,6,23,0.45);
+    }
+    .modal1 h2{margin:0 0 10px}
+
+    .tabs1{display:flex;gap:8px;margin-bottom:12px}
+    .tab1{flex:1;padding:10px;border-radius:8px;background:#f5f7fb;border:1px solid rgba(10,20,40,0.03);text-align:center;cursor:pointer}
+    .tab1.active1{background:linear-gradient(180deg,#e9f2ff,#f7fbff);border:1px solid rgba(43,123,228,0.12);color:var(--primary);font-weight:700}
+    .modal1 .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+    .close-x1{position:absolute;right:18px;top:18px;background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:20px}
+
 
     /* responsive */
     @media (max-width:600px){
