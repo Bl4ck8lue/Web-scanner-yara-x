@@ -9,9 +9,9 @@
 <body>
 <header>
   <div class="brand">
-    <div class="logo" aria-hidden="true">
+    <div id="homeBtn" class="logo" aria-hidden="true">
       <!-- cloud + shield icon -->
-      <svg id="homeBtn" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
       </svg>
     </div>
@@ -128,8 +128,9 @@
 </div>
 
 <script>
-  const enterBtn = document.getElementById('enterBtn');
-  const exitBtn = document.getElementById('exitBtn');
+
+const enterBtn = document.getElementById('enterBtn');
+const exitBtn = document.getElementById('exitBtn');
   const settingsBtn = document.getElementById('settingsBtn');
   const homeBtn = document.getElementById('homeBtn');
 
@@ -285,67 +286,57 @@ function logoutUser() {
 
 
 
-  // Modal open/close
-  function openModal(){
-    modalBackdrop.style.display = 'flex';
-    modalBackdrop.setAttribute('aria-hidden','false');
-    // focus on first input
-    setTimeout(()=>document.getElementById('loginEmail').focus(), 100);
-  }
-  function closeModal(){
-    modalBackdrop.style.display = 'none';
-    modalBackdrop.setAttribute('aria-hidden','true');
-  }
+// Modal open/close
+function openModal(){
+  modalBackdrop.style.display = 'flex';
+  modalBackdrop.setAttribute('aria-hidden','false');
+  // focus on first input
+  setTimeout(()=>document.getElementById('loginEmail').focus(), 100);
+}
 
-  enterBtn.addEventListener('click', openModal);
-  modalClose.addEventListener('click', closeModal);
-  modalBackdrop.addEventListener('click', (e)=>{
-    if(e.target === modalBackdrop) closeModal();
-  });
+function closeModal(){
+  modalBackdrop.style.display = 'none';
+  modalBackdrop.setAttribute('aria-hidden','true');
+}
 
-  // Tabs logic
-  tabs.forEach(t=>{
-    t.addEventListener('click', ()=>{
-      tabs.forEach(x=>{
-        x.classList.toggle('active', x===t);
-        x.setAttribute('aria-selected', x===t ? 'true' : 'false');
-      });
-      const tab = t.dataset.tab;
-      if(tab === 'login'){
-        loginFields.style.display = '';
-        registerFields.style.display = 'none';
-      } else {
-        loginFields.style.display = 'none';
-        registerFields.style.display = '';
-      }
+enterBtn.addEventListener('click', openModal);
+modalClose.addEventListener('click', closeModal);
+
+modalBackdrop.addEventListener('click', (e)=>{
+  if(e.target === modalBackdrop) closeModal();
+});
+
+// Tabs logic
+tabs.forEach(t=>{
+  t.addEventListener('click', ()=>{
+    tabs.forEach(x=>{
+      x.classList.toggle('active', x===t);
+      x.setAttribute('aria-selected', x===t ? 'true' : 'false');
     });
-  });
-
-  // Auth form submit (demo)
-  authForm.addEventListener('submit', (e)=>{
-    e.preventDefault();
-    const activeTab = document.querySelector('.tab.active').dataset.tab;
-    if(activeTab === 'login'){
-      // simple demo validation
-      const email = document.getElementById('loginEmail').value.trim();
-      const pass = document.getElementById('loginPassword').value;
-      if(!email || !pass){ alert('Заполните поля'); return; }
-      // demo success
-      alert('Успешный вход (демо).');
-      closeModal();
+    const tab = t.dataset.tab;
+    if(tab === 'login'){
+      loginFields.style.display = '';
+      registerFields.style.display = 'none';
     } else {
-      const name = document.getElementById('regName').value.trim();
-      const email = document.getElementById('regEmail').value.trim();
-      const p1 = document.getElementById('regPassword').value;
-      const p2 = document.getElementById('regPassword2').value;
-      if(!name || !email || !p1 || !p2){ alert('Заполните поля'); return; }
-      if(p1.length < 8){ alert('Пароль должен быть минимум 8 символов'); return; }
-      if(p1 !== p2){ alert('Пароли не совпадают'); return; }
-      closeModal();
+      loginFields.style.display = 'none';
+      registerFields.style.display = '';
     }
   });
+});
 
-  regBtn.addEventListener('click', () => {
+// Auth form submit (demo)
+authForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const activeTab = document.querySelector('.tab.active').dataset.tab;
+  if(activeTab === 'login'){
+    // simple demo validation
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPassword').value;
+    if(!email || !pass){ alert('Заполните поля'); return; }
+    // demo success
+    alert('Успешный вход (демо).');
+    closeModal();
+  } else {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const p1 = document.getElementById('regPassword').value;
@@ -353,91 +344,102 @@ function logoutUser() {
     if(!name || !email || !p1 || !p2){ alert('Заполните поля'); return; }
     if(p1.length < 8){ alert('Пароль должен быть минимум 8 символов'); return; }
     if(p1 !== p2){ alert('Пароли не совпадают'); return; }
-    
-    const form = new FormData();
-    form.append('name', name);
-    form.append('email', email);
-    form.append('p1', p1);
-        
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/reg', true);
-        
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === 4) {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const res = JSON.parse(xhr.responseText);
-          // Print output from /reg in main.go
-          alert(res.output);
-          document.getElementById('regName').value = '';
-          document.getElementById('regEmail').value = '';
-          document.getElementById('regPassword').value = '';
-          document.getElementById('regPassword2').value = '';
-
-          
-        }
-      }
-    };
-    xhr.send(form);
     closeModal();
-  });
-
-  signBtn.addEventListener('click', ()=> {
-    const loginEmail = document.getElementById('loginEmail').value.trim();
-    const loginPassword = document.getElementById('loginPassword').value.trim();
-    
-    const form = new FormData();
-    form.append('email', loginEmail);
-    form.append('p1', loginPassword);
-    
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/sign', true);
-    
-    xhr.onreadystatechange = () => {
-        if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    const res = JSON.parse(xhr.responseText);
-                    if (res.output == 1) {
-                        // Успешный вход
-                        updateAuthUI(true, loginEmail);
-                        closeModal();
-                    } else {
-                        alert('Ошибка входа: неверные данные');
-                    }
-                } catch (e) {
-                    console.error('Error parsing response:', e);
-                    alert('Ошибка при обработке ответа сервера');
-                }
-            }
-        }
-    };
-    
-    xhr.send(form);
+  }
 });
 
-  // File selection UI
-  fileLabelBtn.addEventListener('click', ()=> fileInput.click());
-  fileInput.addEventListener('change', ()=>{
-    if(fileInput.files && fileInput.files.length){
-      const f = fileInput.files[0];
-      fileLabelBtn.textContent = `${f.name} (${Math.round(f.size/1024)} KB)`;
-      scanBtn.disabled = false;
-      statusText.textContent = 'Файл готов. Нажмите Scan для запуска анализа.';
-      resultText.style.display = 'none';
-      progressBar.style.width = '0%';
-    } else {
-      fileLabelBtn.textContent = 'Choose file';
-      scanBtn.disabled = true;
-      statusText.textContent = 'Your files are waiting to be scanned...';
-    }
-  });
+regBtn.addEventListener('click', () => {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const p1 = document.getElementById('regPassword').value;
+  const p2 = document.getElementById('regPassword2').value;
+  if(!name || !email || !p1 || !p2){ alert('Заполните поля'); return; }
+  if(p1.length < 8){ alert('Пароль должен быть минимум 8 символов'); return; }
+  if(p1 !== p2){ alert('Пароли не совпадают'); return; }
+    
+  const form = new FormData();
+  form.append('name', name);
+  form.append('email', email);
+  form.append('p1', p1);
+        
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/reg', true);
+        
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4) {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const res = JSON.parse(xhr.responseText);
+        // Print output from /reg in main.go
+        alert(res.output);
+        document.getElementById('regName').value = '';
+        document.getElementById('regEmail').value = '';
+        document.getElementById('regPassword').value = '';
+        document.getElementById('regPassword2').value = '';
 
-  // Simulated scanning
-  let scanning = false;
-  scanBtn.addEventListener('click', () => {
+          
+      }
+    }
+  };
+  xhr.send(form);
+  closeModal();
+});
+
+signBtn.addEventListener('click', ()=> {
+  const loginEmail = document.getElementById('loginEmail').value.trim();
+  const loginPassword = document.getElementById('loginPassword').value.trim();
+    
+  const form = new FormData();
+  form.append('email', loginEmail);
+  form.append('p1', loginPassword);
+    
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/sign', true);
+    
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4) {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (res.output == 1) {
+            // Успешный вход
+            updateAuthUI(true, loginEmail);
+            closeModal();
+          } else {
+            alert('Ошибка входа: неверные данные');
+          }
+        } catch (e) {
+          console.error('Error parsing response:', e);
+          alert('Ошибка при обработке ответа сервера');
+        }
+      }
+    }
+  };
+  
+  xhr.send(form);
+});
+
+// File selection UI
+fileLabelBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', ()=>{
+  if(fileInput.files && fileInput.files.length){
+    const f = fileInput.files[0];
+    fileLabelBtn.textContent = `${f.name} (${Math.round(f.size/1024)} KB)`;
+    scanBtn.disabled = false;
+    statusText.textContent = 'Файл готов. Нажмите Scan для запуска анализа.';
+    resultText.style.display = 'none';
+    progressBar.style.width = '0%';
+  } else {
+    fileLabelBtn.textContent = 'Choose file';
+    scanBtn.disabled = true;
+    statusText.textContent = 'Your files are waiting to be scanned...';
+  }
+});
+
+// Simulated scanning
+let scanning = false;
+scanBtn.addEventListener('click', () => {
   if (scanning) return;
   if (!fileInput.files.length) { alert('Выберите файл'); return; }
-
   const file = fileInput.files[0];
   const form = new FormData();
   form.append('file', file);
@@ -534,24 +536,24 @@ function logoutUser() {
   xhr.send(form);
 });
 
-  resetBtn.addEventListener('click', ()=>{
-    fileInput.value = '';
-    fileLabelBtn.textContent = 'Choose file';
-    scanBtn.disabled = true;
-    progressBar.style.width = '0%';
-    statusText.textContent = 'Your files are waiting to be scanned...';
-    resultText.style.display = 'none';
-  });
+resetBtn.addEventListener('click', ()=>{
+  fileInput.value = '';
+  fileLabelBtn.textContent = 'Choose file';
+  scanBtn.disabled = true;
+  progressBar.style.width = '0%';
+  statusText.textContent = 'Your files are waiting to be scanned...';
+  resultText.style.display = 'none';
+});
 
-  // Provide keyboard accessibility: Enter opens modal
-  document.addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter' && document.activeElement === enterBtn){
-      openModal();
-    }
-    if(e.key === 'Escape'){
-      closeModal();
-    }
-  });
+// Provide keyboard accessibility: Enter opens modal
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && document.activeElement === enterBtn){
+    openModal();
+  }
+  if(e.key === 'Escape'){
+    closeModal();
+  }
+});
 </script>
 
 </body>
