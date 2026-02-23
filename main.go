@@ -33,6 +33,7 @@ var (
 	scriptPath  = "./scripts/analyze.py"
 	scriptPath1 = "./scripts/registr.py"
 	scriptPath2 = "./scripts/signin.py"
+	rulesPath   = "./rules/test.yara"
 	scanTimeout = 90 * time.Second
 )
 
@@ -46,11 +47,128 @@ func main() {
 	http.HandleFunc("/api/check-auth", checkAuthHandler)
 	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/settings", settingsHandler)
+	http.HandleFunc("/loadingRules", loadingHandler)
+	http.HandleFunc("/chooseRules", choosingHandler)
+	http.HandleFunc("/api/list-rules", listRulesHandler)
+	http.HandleFunc("/road", roadHandler)
 
 	fmt.Println("Starting server at :8085")
 	if err := http.ListenAndServe(":8085", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("server error:", err)
 	}
+}
+
+func roadHandler(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(templateDir, "indexChoose.html")
+	tmpl, err := template.ParseFiles(path)
+
+	if err != nil {
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, nil); err != nil {
+		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+const rulesDir = "./rules"
+
+func listRulesHandler(w http.ResponseWriter, r *http.Request) {
+	if _, err := r.Cookie("email"); err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	entries, err := os.ReadDir(rulesDir)
+	if err != nil {
+		http.Error(w, "cannot read directory", http.StatusInternalServerError)
+		return
+	}
+
+	var files []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			files = append(files, e.Name())
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(files)
+}
+
+func choosingHandler(w http.ResponseWriter, r *http.Request) {
+	path := filepath.Join(templateDir, "indexRules.html")
+	tmpl, err := template.ParseFiles(path)
+
+	if err != nil {
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, nil); err != nil {
+		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+const uploadDir = "./scripts" // целевая директория для сохранения файлов
+func loadingHandler(w http.ResponseWriter, r *http.Request) {
+	// Ограничить размер тела запроса
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "request too large or malformed", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "missing file field", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Безопасное имя файла (только базовая часть)
+	filename := filepath.Base(header.Filename)
+
+	// Убедимся, что целевая директория существует
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		http.Error(w, "internal error: cannot create upload directory", http.StatusInternalServerError)
+		return
+	}
+
+	// Создаём временный файл в нужной папке с уникальным именем
+	// Шаблон "scan-*-" + оригинальное имя файла (без пути)
+	tmp, err := os.Create("./rules/" + filename)
+	if err != nil {
+		http.Error(w, "internal error creating file", http.StatusInternalServerError)
+		return
+	}
+
+	// Закрываем файл при выходе, но НЕ удаляем (файл остаётся в uploadDir)
+	defer tmp.Close()
+
+	// копируем содержимое
+	if _, err := io.Copy(tmp, file); err != nil {
+		http.Error(w, "failed to save uploaded file", http.StatusInternalServerError)
+		return
+	}
+
+	// семафор параллелизма
+	select {
+	case sem <- struct{}{}:
+		defer func() { <-sem }()
+	default:
+		http.Error(w, "server busy, try later", http.StatusTooManyRequests)
+		return
+	}
+	// Здесь можно добавить дальнейшую обработку файла (например, антивирусная проверка)
+	// ...
+
+	// Успешный ответ
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("file uploaded successfully"))
 }
 
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -403,11 +521,12 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	filename := filepath.Base(header.Filename)
 
 	// создать temp файл
-	tmp, err := os.CreateTemp("", "scan-*-"+filename)
+	tmp, err := os.Create(filename)
 	if err != nil {
 		http.Error(w, "internal error creating temp file", http.StatusInternalServerError)
 		return
 	}
+
 	tmpPath := tmp.Name()
 	defer func() {
 		tmp.Close()
@@ -433,7 +552,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), scanTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, tmpPath)
+	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, tmpPath, rulesPath)
 	out, err := cmd.CombinedOutput()
 
 	// timeout?

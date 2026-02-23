@@ -2,8 +2,8 @@ import os
 import sys
 import json
 
-def main(path):
-    os.system('./scripts/yr scan --disable-warnings --output-format json ./scripts/test.yara ' + path + ' > ./scripts/output_scan')
+def main(rulespath, path):
+    os.system('./scripts/yr scan --disable-warnings --output-format json ' + rulespath + path + ' > ./scripts/output_scan')
     
     try:
         # Read JSON from file
@@ -22,4 +22,4 @@ def main(path):
     os.system('cat ./scripts/output_rules')
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2])

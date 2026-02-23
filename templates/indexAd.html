@@ -39,11 +39,13 @@
     <textarea style="border-radius:4px;resize: none;" id="enterRules" name="enterRules" rows="25" cols="50" placeholder="Enter your rule..."></textarea>
     <h3>or</h3>
     <label class="file-label" for="fileInput" id="fileLabelBtn">Upload new rules</label>
-    <input type="file" id="fileInput" aria-label="Выбрать файл для сканирования" />
+    <input type="file" id="fileInput" aria-label="Выбрать файл с правилами" />
   </div>
 
   <div class="illu">
-    <button class="btn" id="chalBtn" disabled>Check rules and load</button>
+    <button class="btn" id="chalBtn">Check rules and load</button>
+    <button class="btn" id="chooseBtn">Choose the rules</button>
+
   </div>
   
 </main>
@@ -53,6 +55,8 @@
   const exitBtn = document.getElementById('exitBtn');
   const settingsBtn = document.getElementById('settingsBtn');
   const homeBtn = document.getElementById('homeBtn');
+  const chalBtn = document.getElementById('chalBtn');
+  const chooseBtn = document.getElementById('chooseBtn');
 
   const replaceTxt = document.getElementById('replacementText');
   const modalBackdrop = document.getElementById('modalBackdrop');
@@ -110,6 +114,70 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 });
 
+replaceTxt.addEventListener('click', () => {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Создаем запрос на проверку авторизации
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                // Пользователь авторизован
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                // Пользователь не авторизован
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            // В случае ошибки показываем кнопку входа
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+  window.location.href = '/road';
+})
+
+chooseBtn.addEventListener("click", () => {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Создаем запрос на проверку авторизации
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                // Пользователь авторизован
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                // Пользователь не авторизован
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            // В случае ошибки показываем кнопку входа
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+  window.location.href = '/chooseRules';
+})
+
 // Функция для обновления интерфейса в зависимости от авторизации
 function updateAuthUI(isAuthenticated, email = '') {
     if (isAuthenticated) {
@@ -165,16 +233,27 @@ function logoutUser() {
     if(fileInput.files && fileInput.files.length){
       const f = fileInput.files[0];
       fileLabelBtn.textContent = `${f.name} (${Math.round(f.size/1024)} KB)`;
-      scanBtn.disabled = false;
-      statusText.textContent = 'Файл готов. Нажмите Scan для запуска анализа.';
-      resultText.style.display = 'none';
-      progressBar.style.width = '0%';
+      
     } else {
       fileLabelBtn.textContent = 'Choose file';
-      scanBtn.disabled = true;
-      statusText.textContent = 'Your files are waiting to be scanned...';
+
     }
   });
+
+chalBtn.addEventListener('click', () => {
+  const file = fileInput.files[0];
+  const form = new FormData();
+  form.append('file', file);
+
+  alert(file);
+  alert(form);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/loadingRules', true);
+
+  xhr.send(form);
+
+})
 
   // Tabs logic
   tabs.forEach(t=>{

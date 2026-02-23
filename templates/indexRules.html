@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cloud Antivirus — Анализ файлов</title>
+  <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div id="homeBtn" class="logo" aria-hidden="true">
+      <!-- cloud + shield icon -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>CLOUD ANTIVIRUS</h1>
+      <div style="font-size:12px;color:var(--muted)">Облачный анализ загружаемых файлов</div>
+    </div>
+  </div>
+
+  <nav aria-label="Главная навигация">
+    <button id="enterBtn" title="Enter (вход/регистрация)">Enter</button>
+    <button id="replacementText" style="display: none;">Button is hidden!</button>
+    <button id="exitBtn">Exit</button>
+    <button id="historyBtn">History</button>
+    <button id="priceBtn">Price</button>
+    <button id="contactBtn">Contact</button>
+  </nav>
+</header>
+
+<main class="card" role="main" aria-labelledby="mainTitle">
+  <h2 id="mainTitle" class="hero-title">Administration Page</h2>
+
+  <div class="illu">
+    <form action="#">
+      <label for="pathtorules">Path to rules </label>
+      <select id="rulesSelect">
+        <option disabled>Загрузка...</option>
+    </select>
+    </form>
+    <p id="selectedFileText" style="color: var(--muted); font-size: 14px;">Активный файл правил: не выбран</p>
+  </div>
+
+  <div class="illu">
+    <button class="btn" id="chooseBtn">Submit new rules</button>
+
+  </div>
+  
+</main>
+
+<script>
+  const enterBtn = document.getElementById('enterBtn');
+const exitBtn = document.getElementById('exitBtn');
+const homeBtn = document.getElementById('homeBtn');
+const chooseBtn = document.getElementById('chooseBtn');
+const replaceTxt = document.getElementById('replacementText');
+const rulesSelect = document.getElementById('rulesSelect');
+
+// Проверка авторизации
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+    const saved = localStorage.getItem('activeRulesFile');
+    if (saved) {
+        selectedFileText.textContent = `Активный файл правил: ${saved}`;
+    } else {
+        selectedFileText.textContent = 'Активный файл правил: не выбран';
+    }
+    loadRulesList(); // ✅ загружаем список файлов при старте
+});
+
+const selectedFileText = document.getElementById('selectedFileText');
+
+rulesSelect.addEventListener('change', () => {
+    const selected = rulesSelect.value;
+    if (selected) {
+        selectedFileText.textContent = `Выбран файл: ${selected}`;
+    } else {
+        selectedFileText.textContent = 'Файл не выбран';
+    }
+});
+
+replaceTxt.addEventListener('click', () => {
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Создаем запрос на проверку авторизации
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                // Пользователь авторизован
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                // Пользователь не авторизован
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            // В случае ошибки показываем кнопку входа
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+  window.location.href = '/road';
+})
+
+function updateAuthUI(isAuthenticated, email = '') {
+    if (isAuthenticated) {
+        enterBtn.style.display = 'none';
+        replaceTxt.style.display = 'inline';
+        replaceTxt.textContent = email;
+        exitBtn.style.display = 'inline';
+    } else {
+        enterBtn.style.display = '';
+        replaceTxt.style.display = 'none';
+        exitBtn.style.display = 'none';
+    }
+}
+
+exitBtn.addEventListener('click', () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+        logoutUser();
+    }
+});
+
+homeBtn.addEventListener('click', () => {
+    window.location.href = '/';
+});
+
+function logoutUser() {
+    fetch('/logout', {
+        method: 'POST',
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (response.ok) {
+            updateAuthUI(false);
+            alert('Вы успешно вышли из системы');
+            window.location.href = '/';
+        } else {
+            throw new Error('Logout failed');
+        }
+    })
+    .catch(error => {
+        console.error('Logout error:', error);
+        alert('Ошибка при выходе из системы');
+    });
+}
+
+// ✅ Загрузка списка файлов из директории
+function loadRulesList() {
+    fetch('/api/list-rules')
+        .then(r => {
+            if (!r.ok) throw new Error('Failed to fetch');
+            return r.json();
+        })
+        .then(files => {
+            rulesSelect.innerHTML = '';
+
+            if (!files || files.length === 0) {
+                const opt = document.createElement('option');
+                opt.textContent = 'Нет доступных файлов';
+                opt.disabled = true;
+                rulesSelect.appendChild(opt);
+                return;
+            }
+
+            files.forEach(filename => {
+                const opt = document.createElement('option');
+                opt.value = filename;
+                opt.textContent = filename;
+                rulesSelect.appendChild(opt);
+            });
+        })
+        .catch(err => console.error('Error loading rules:', err));
+}
+
+chooseBtn.addEventListener('click', () => {
+    const selected = rulesSelect.value;
+    if (!selected) {
+        alert('Выберите файл правил');
+        return;
+    }
+
+    localStorage.setItem('activeRulesFile', selected); // ✅ сохраняем
+    selectedFileText.textContent = `Активный файл правил: ${selected}`;
+})
+</script>
+
+</body>
+</html>

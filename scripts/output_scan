@@ -3,459 +3,459 @@
   "matches": [
     {
       "rule": "Andr_Trojan_Cajino_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Andr_Trojan_Gmaster_3",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Andr_Trojan_Kmin_3",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Andr_Trojan_Kmin_4",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Andr_Trojan_Kmin_5",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Andr_Trojan_Rooter_5",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Andr_Trojan_SuperClean_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Doc_Trojan_Thus_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Doc_Trojan_Vmpc_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Email_Trojan_Trojan_838",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Html_Trojan_IFrame_8",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Java_Exploit_CVE_2013_2472_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Java_Trojan_Dropper_145",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_36981",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37041",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37042",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37043",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37044",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37045",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37046",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37047",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37048",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37049",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37050",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37054",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37055",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37056",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37057",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37058",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37059",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37060",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37061",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37062",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37063",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37064",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Legacy_Trojan_Agent_37065",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Pdf_Exploit_CVE_2014_9160_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Php_Exploit_CVE_2011_4153_2",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Php_Malware_q28b11e_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Php_Trojan_Uploader_2",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Swf_Exploit_CVE_2013_3363_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Swf_Exploit_CVE_2013_5324_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Swf_Exploit_CVE_2015_5543_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Swf_Exploit_CVE_2015_8446_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Swf_Exploit_CVE_2016_4171_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Swf_Exploit_Downloader_105",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Swf_Packer_Angzia_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Unix_Tool_13329_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Unix_Tool_18585_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Adware_Adnur_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Downloader_63745_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Downloader_67677_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Downloader_Agent_37009",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Downloader_MSWord_6331390_3",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Dropper_Agent_33925",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Exploit_CVE_2006_4182_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Exploit_CVE_2012_0507_6",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Exploit_CVE_2013_0082_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Exploit_CVE_2013_1325_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Exploit_CVE_2014_0515_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Exploit_CVE_2018_4871_6416703_0",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Exploit_CVE_2020_16922_9777221_0",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Packer_VbPacker_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Ransomware_ProLock_9205483_0",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Ransomware_ProLock_9205485_0",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Spyware_Zbot_1290",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Tool_Shellcode_13531_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Agent_35868",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Allaple_317",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Autorun_418",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Bacuy_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_BadTrans_2",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_CVE_2010_3333_4",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_ColdApe_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_DDoS_6",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Feebs_8",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Hd_2",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_JS_266",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_JS_267",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Kalisti_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_KillAV_45",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Onlinegames_31",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Onlinegames_32",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Oror_3",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Packed_42",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Peed_131",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Peed_134",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Pif_2",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Pif_3",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Pif_4",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Pif_5",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Pony_6584354_0",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Prosti_24",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Sality_1056",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_SkinTrim_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_SwizzorA_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Swizzor_607",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Tepfer_61",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Trisis_6406273_0",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Trisis_6406275_0",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_URLspoof_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_VBS_36",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_VB_1027",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_VB_1082",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Vundo_24",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_Vundo_27",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Trojan_WinTrim_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Virus_Jadtre_2",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Virus_Jadtre_3",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Virus_Rugrat_1",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Worm_J_19",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Worm_Koobface_38",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Worm_Koobface_49",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     },
     {
       "rule": "Win_Worm_VBS_206",
-      "file": "/tmp/scan-257366415-dip.zip"
+      "file": "/home/ilya-diplom/Desktop/diplom/Web-scanner-yara-x-main/dip.zip"
     }
   ]
 }
