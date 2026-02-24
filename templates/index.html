@@ -444,6 +444,10 @@ scanBtn.addEventListener('click', () => {
   const form = new FormData();
   form.append('file', file);
 
+  const rules = localStorage.getItem('activeRulesFile');
+  alert(rules);
+  form.append('rules', rules);
+
   scanning = true;
   scanBtn.disabled = true;
   resetBtn.disabled = true;

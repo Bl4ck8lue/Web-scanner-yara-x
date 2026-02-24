@@ -33,7 +33,8 @@ var (
 	scriptPath  = "./scripts/analyze.py"
 	scriptPath1 = "./scripts/registr.py"
 	scriptPath2 = "./scripts/signin.py"
-	rulesPath   = "./rules/test.yara"
+	rulesPath   = "./rules/"
+	buffName    = ""
 	scanTimeout = 90 * time.Second
 )
 
@@ -504,6 +505,7 @@ func deleteCookieFromDB(r *http.Request) {
 // scanHandler: принимает multipart form field "file", сохраняет временно, вызывает python скрипт,
 // ждёт результата и возвращает JSON с { exit_code, output }
 func scanHandler(w http.ResponseWriter, r *http.Request) {
+	rulesPath = "./rules/"
 	// Ограничить размер тела
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -519,6 +521,12 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	filename := filepath.Base(header.Filename)
+
+	rules := r.FormValue("rules")
+	if err != nil {
+		http.Error(w, "missing rules field", http.StatusBadRequest)
+		return
+	}
 
 	// создать temp файл
 	tmp, err := os.Create(filename)
@@ -552,6 +560,10 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), scanTimeout)
 	defer cancel()
 
+	rulesPath += rules
+
+	fmt.Println(rulesPath)
+
 	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, tmpPath, rulesPath)
 	out, err := cmd.CombinedOutput()
 
@@ -573,6 +585,8 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	} else if cmd.ProcessState != nil {
 		exitCode = cmd.ProcessState.ExitCode()
 	}
+
+	fmt.Println(string(out))
 
 	// Формируем ответ — возвращаем stdout (ожидаем JSON от скрипта)
 	resp := map[string]any{

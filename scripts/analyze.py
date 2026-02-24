@@ -3,7 +3,7 @@ import sys
 import json
 
 def main(rulespath, path):
-    os.system('./scripts/yr scan --disable-warnings --output-format json ' + rulespath + path + ' > ./scripts/output_scan')
+    os.system('./scripts/yr scan --disable-warnings --output-format json ' + rulespath + " " + path + ' > ./scripts/output_scan')
     
     try:
         # Read JSON from file
