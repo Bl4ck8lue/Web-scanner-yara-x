@@ -227,6 +227,7 @@ homeBtn.addEventListener('click', () => {
   window.location.href = '/';
 })
 
+
 replaceTxt.addEventListener('click', () => {
   document.addEventListener('DOMContentLoaded', function() {
     // Создаем запрос на проверку авторизации
@@ -255,8 +256,13 @@ replaceTxt.addEventListener('click', () => {
             enterBtn.style.display = '';
             replaceTxt.style.display = 'none';
         });
-});
-  window.location.href = '/road';
+    });
+    alert(replaceTxt.textContent);
+    if (replaceTxt.textContent == "admin@admin.ru") {
+      window.location.href = '/road';
+    } else {
+      alert("You are not an admin!");
+    }
 })
 
 function logoutUser() {
