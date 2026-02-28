@@ -10,7 +10,6 @@
 <header>
   <div class="brand">
     <div id="homeBtn" class="logo" aria-hidden="true">
-      <!-- cloud + shield icon -->
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
       </svg>
@@ -46,7 +45,6 @@
 
     <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
       <div class="magnifier" aria-hidden="true">
-        <!-- rotate icon -->
         <svg width="46" height="46" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#0b2540" stroke-width="1.6">
           <path d="M21 21l-4.35-4.35" stroke-linecap="round" stroke-linejoin="round"></path>
           <path d="M13 7a5 5 0 11-4 8.66" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -71,7 +69,6 @@
   <div class="result" id="resultText" aria-live="polite" style="display:none"></div>
 </main>
 
-<!-- Modal (Login/Register) -->
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
   <div class="modal" role="document" aria-labelledby="modalTitle">
     <button class="close-x" id="modalClose" aria-label="Close">&times;</button>
@@ -82,7 +79,6 @@
     </div>
 
     <form id="authForm">
-      <!-- login fields -->
       <div id="loginFields">
         <div class="form-group">
           <label for="loginEmail">Email</label>
@@ -97,7 +93,6 @@
         </div>
       </div>
 
-      <!-- register fields (hidden by default) -->
       <div id="registerFields" style="display:none">
         <div class="form-group">
           <label for="regName">Full name</label>
@@ -133,6 +128,7 @@ const enterBtn = document.getElementById('enterBtn');
 const exitBtn = document.getElementById('exitBtn');
   const settingsBtn = document.getElementById('settingsBtn');
   const homeBtn = document.getElementById('homeBtn');
+  const historyBtn = document.getElementById('historyBtn');
 
   const replaceTxt = document.getElementById('replacementText');
   const modalBackdrop = document.getElementById('modalBackdrop');
@@ -158,9 +154,7 @@ const exitBtn = document.getElementById('exitBtn');
   const progressBar = document.getElementById('progressBar');
   const resultText = document.getElementById('resultText');
 
-  // Проверка авторизации при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // Создаем запрос на проверку авторизации
     fetch('/api/check-auth')
         .then(response => {
             if (!response.ok) {
@@ -170,39 +164,34 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             if (data.authenticated) {
-                // Пользователь авторизован
                 enterBtn.style.display = 'none';
                 replaceTxt.style.display = 'inline';
                 replaceTxt.textContent = data.email;
             } else {
-                // Пользователь не авторизован
                 enterBtn.style.display = '';
                 replaceTxt.style.display = 'none';
             }
         })
         .catch(error => {
             console.error('Error checking auth status:', error);
-            // В случае ошибки показываем кнопку входа
             enterBtn.style.display = '';
             replaceTxt.style.display = 'none';
         });
 });
 
-// Функция для обновления интерфейса в зависимости от авторизации
 function updateAuthUI(isAuthenticated, email = '') {
     if (isAuthenticated) {
         enterBtn.style.display = 'none';
         replaceTxt.style.display = 'inline';
         replaceTxt.textContent = email;
-        exitBtn.style.display = 'inline'; // Показываем кнопку Exit
+        exitBtn.style.display = 'inline';
     } else {
         enterBtn.style.display = '';
         replaceTxt.style.display = 'none';
-        exitBtn.style.display = 'none'; // Скрываем кнопку Exit
+        exitBtn.style.display = 'none';
     }
 }
 
-// Используйте ее при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     fetch('/api/check-auth')
         .then(response => response.json())
@@ -223,14 +212,16 @@ exitBtn.addEventListener('click', () => {
     }
 });
 
+historyBtn.addEventListener('click', () => {
+  window.location.href = '/history';
+})
+
 homeBtn.addEventListener('click', () => {
   window.location.href = '/';
 })
 
-
 replaceTxt.addEventListener('click', () => {
   document.addEventListener('DOMContentLoaded', function() {
-    // Создаем запрос на проверку авторизации
     fetch('/api/check-auth')
         .then(response => {
             if (!response.ok) {
@@ -240,19 +231,16 @@ replaceTxt.addEventListener('click', () => {
         })
         .then(data => {
             if (data.authenticated) {
-                // Пользователь авторизован
                 enterBtn.style.display = 'none';
                 replaceTxt.style.display = 'inline';
                 replaceTxt.textContent = data.email;
             } else {
-                // Пользователь не авторизован
                 enterBtn.style.display = '';
                 replaceTxt.style.display = 'none';
             }
         })
         .catch(error => {
             console.error('Error checking auth status:', error);
-            // В случае ошибки показываем кнопку входа
             enterBtn.style.display = '';
             replaceTxt.style.display = 'none';
         });
@@ -266,10 +254,9 @@ replaceTxt.addEventListener('click', () => {
 })
 
 function logoutUser() {
-    // Отправляем запрос на сервер для выхода
     fetch('/logout', {
         method: 'POST',
-        credentials: 'same-origin' // Чтобы отправлялись куки
+        credentials: 'same-origin'
     })
     .then(response => {
         if (response.ok) {
@@ -278,7 +265,6 @@ function logoutUser() {
             // Очищаем поля формы входа
             document.getElementById('loginEmail').value = '';
             document.getElementById('loginPassword').value = '';
-            // Можно показать сообщение
             alert('Вы успешно вышли из системы');
         } else {
             throw new Error('Logout failed');
@@ -290,13 +276,9 @@ function logoutUser() {
     });
 }
 
-
-
-// Modal open/close
 function openModal(){
   modalBackdrop.style.display = 'flex';
   modalBackdrop.setAttribute('aria-hidden','false');
-  // focus on first input
   setTimeout(()=>document.getElementById('loginEmail').focus(), 100);
 }
 
@@ -312,7 +294,6 @@ modalBackdrop.addEventListener('click', (e)=>{
   if(e.target === modalBackdrop) closeModal();
 });
 
-// Tabs logic
 tabs.forEach(t=>{
   t.addEventListener('click', ()=>{
     tabs.forEach(x=>{
@@ -330,16 +311,13 @@ tabs.forEach(t=>{
   });
 });
 
-// Auth form submit (demo)
 authForm.addEventListener('submit', (e)=>{
   e.preventDefault();
   const activeTab = document.querySelector('.tab.active').dataset.tab;
   if(activeTab === 'login'){
-    // simple demo validation
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPassword').value;
     if(!email || !pass){ alert('Заполните поля'); return; }
-    // demo success
     alert('Успешный вход (демо).');
     closeModal();
   } else {
@@ -375,14 +353,11 @@ regBtn.addEventListener('click', () => {
     if (xhr.readyState === 4) {
       if (xhr.status >= 200 && xhr.status < 300) {
         const res = JSON.parse(xhr.responseText);
-        // Print output from /reg in main.go
         alert(res.output);
         document.getElementById('regName').value = '';
         document.getElementById('regEmail').value = '';
         document.getElementById('regPassword').value = '';
         document.getElementById('regPassword2').value = '';
-
-          
       }
     }
   };
@@ -424,7 +399,6 @@ signBtn.addEventListener('click', ()=> {
   xhr.send(form);
 });
 
-// File selection UI
 fileLabelBtn.addEventListener('click', ()=> fileInput.click());
 fileInput.addEventListener('change', ()=>{
   if(fileInput.files && fileInput.files.length){
@@ -441,7 +415,6 @@ fileInput.addEventListener('change', ()=>{
   }
 });
 
-// Simulated scanning
 let scanning = false;
 scanBtn.addEventListener('click', () => {
   if (scanning) return;
@@ -464,10 +437,9 @@ scanBtn.addEventListener('click', () => {
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/scan', true);
 
-  // отслеживаем прогресс загрузки
   xhr.upload.addEventListener('progress', (e) => {
     if (e.lengthComputable) {
-      const percent = Math.round((e.loaded / e.total)); // резервируем 50% для загрузки
+      const percent = Math.round((e.loaded / e.total));
       progressBar.style.width = percent + '%';
     }
   });
@@ -478,7 +450,6 @@ scanBtn.addEventListener('click', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const res = JSON.parse(xhr.responseText);
-          // если Python вернул JSON в stdout, он будет в res.output
           let parsed = null;
           try { parsed = JSON.parse(res.output); } catch(e) { parsed = null; }
 
@@ -491,12 +462,9 @@ scanBtn.addEventListener('click', () => {
               resultText.style.color = 'var(--success)';
               resultText.textContent = res.output;
             }
-            // покажем дополнительные данные
             resultText.style.display = '';
-            // опционально: показать детальный JSON в консоли или как текст
             console.log('scanner result:', parsed);
           } else {
-            // если не удалось распарсить, покажем сырой output
             resultText.style.color = 'var(--muted)';
             resultText.textContent = res.output || '(no output)';
             resultText.style.display = '';
@@ -511,7 +479,6 @@ scanBtn.addEventListener('click', () => {
           resultText.textContent = 'Server error: ' + err.message;
         }
       } else {
-        // ошибка сервера
         statusText.textContent = 'Server error: ' + xhr.status;
         resultText.style.display = '';
         resultText.style.color = 'var(--danger)';
@@ -522,13 +489,10 @@ scanBtn.addEventListener('click', () => {
       resetBtn.disabled = false;
       scanBtn.disabled = false;
     } else {
-      // между загрузкой и готовностью можно показать "scanning..."
       if (xhr.readyState === 2 || xhr.readyState === 3) {
-        // уменьшенно анимируем от 50% до 90% пока сервер думает
         const cur = parseFloat(progressBar.style.width) || 0;
         if (cur < 50) progressBar.style.width = '50%';
         statusText.textContent = 'Scanning on server...';
-        // мелкая анимация к 90%
         let p = Math.max(50, cur);
         const tick = setInterval(() => {
           if (p < 90) {
@@ -542,7 +506,6 @@ scanBtn.addEventListener('click', () => {
     }
   };
 
-  // посылаем
   xhr.send(form);
 });
 
@@ -555,7 +518,6 @@ resetBtn.addEventListener('click', ()=>{
   resultText.style.display = 'none';
 });
 
-// Provide keyboard accessibility: Enter opens modal
 document.addEventListener('keydown', (e)=>{
   if(e.key === 'Enter' && document.activeElement === enterBtn){
     openModal();

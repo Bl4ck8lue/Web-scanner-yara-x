@@ -11,7 +11,6 @@
 <header>
   <div class="brand">
     <div id="homeBtn" class="logo" aria-hidden="true">
-      <!-- cloud + shield icon -->
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
       </svg>
@@ -53,12 +52,13 @@
 </main>
 
 <script>
-  const enterBtn = document.getElementById('enterBtn');
+const enterBtn = document.getElementById('enterBtn');
 const exitBtn = document.getElementById('exitBtn');
 const homeBtn = document.getElementById('homeBtn');
 const chooseBtn = document.getElementById('chooseBtn');
 const replaceTxt = document.getElementById('replacementText');
 const rulesSelect = document.getElementById('rulesSelect');
+const historyBtn = document.getElementById('historyBtn');
 
 // Проверка авторизации
 document.addEventListener('DOMContentLoaded', function() {
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         selectedFileText.textContent = 'Активный файл правил: не выбран';
     }
-    loadRulesList(); // ✅ загружаем список файлов при старте
+    loadRulesList();
 });
 
 const selectedFileText = document.getElementById('selectedFileText');
@@ -102,10 +102,13 @@ rulesSelect.addEventListener('change', () => {
     }
 });
 
+historyBtn.addEventListener('click', () => {
+  window.location.href = '/history';
+})
+
 replaceTxt.addEventListener('click', () => {
   document.addEventListener('DOMContentLoaded', function() {
     
-    // Создаем запрос на проверку авторизации
     fetch('/api/check-auth')
         .then(response => {
             if (!response.ok) {
@@ -115,19 +118,16 @@ replaceTxt.addEventListener('click', () => {
         })
         .then(data => {
             if (data.authenticated) {
-                // Пользователь авторизован
                 enterBtn.style.display = 'none';
                 replaceTxt.style.display = 'inline';
                 replaceTxt.textContent = data.email;
             } else {
-                // Пользователь не авторизован
                 enterBtn.style.display = '';
                 replaceTxt.style.display = 'none';
             }
         })
         .catch(error => {
             console.error('Error checking auth status:', error);
-            // В случае ошибки показываем кнопку входа
             enterBtn.style.display = '';
             replaceTxt.style.display = 'none';
         });
@@ -178,7 +178,6 @@ function logoutUser() {
     });
 }
 
-// ✅ Загрузка списка файлов из директории
 function loadRulesList() {
     fetch('/api/list-rules')
         .then(r => {
@@ -213,7 +212,7 @@ chooseBtn.addEventListener('click', () => {
         return;
     }
 
-    localStorage.setItem('activeRulesFile', selected); // ✅ сохраняем
+    localStorage.setItem('activeRulesFile', selected);
     selectedFileText.textContent = `Активный файл правил: ${selected}`;
     alert('Новый файл правил выбран! Вернитесь на главную страницу!');
 })

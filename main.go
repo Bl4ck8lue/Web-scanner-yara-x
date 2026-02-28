@@ -52,10 +52,34 @@ func main() {
 	http.HandleFunc("/chooseRules", choosingHandler)
 	http.HandleFunc("/api/list-rules", listRulesHandler)
 	http.HandleFunc("/road", roadHandler)
+	http.HandleFunc("/history", histHandler)
 
 	fmt.Println("Starting server at :8085")
 	if err := http.ListenAndServe(":8085", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("server error:", err)
+	}
+}
+
+func histHandler(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("email")
+	if err != nil {
+		fmt.Println("Error")
+	}
+	if c.Value != "" {
+		path := filepath.Join(templateDir, "indexHistory.html")
+		tmpl, err := template.ParseFiles(path)
+
+		if err != nil {
+			http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := tmpl.Execute(w, nil); err != nil {
+			http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		fmt.Println("No one auth!")
 	}
 }
 

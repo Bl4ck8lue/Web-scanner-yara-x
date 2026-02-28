@@ -11,7 +11,6 @@
 <header>
   <div class="brand">
     <div id="homeBtn" class="logo" aria-hidden="true">
-      <!-- cloud + shield icon -->
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
       </svg>
@@ -39,7 +38,7 @@
     <textarea style="border-radius:4px;resize: none;" id="enterRules" name="enterRules" rows="25" cols="50" placeholder="Enter your rule..."></textarea>
     <h3>or</h3>
     <label class="file-label" for="fileInput" id="fileLabelBtn">Upload new rules</label>
-    <input type="file" id="fileInput" aria-label="Выбрать файл с правилами" />
+    <input type="file" id="fileInput" aria-label="Выбрать файл c правилами" />
   </div>
 
   <div class="illu">
@@ -57,6 +56,7 @@
   const homeBtn = document.getElementById('homeBtn');
   const chalBtn = document.getElementById('chalBtn');
   const chooseBtn = document.getElementById('chooseBtn');
+  const historyBtn = document.getElementById('historyBtn');
 
   const replaceTxt = document.getElementById('replacementText');
   const modalBackdrop = document.getElementById('modalBackdrop');
@@ -82,11 +82,7 @@
   const progressBar = document.getElementById('progressBar');
   const resultText = document.getElementById('resultText');
 
-  
-
-  // Проверка авторизации при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // Создаем запрос на проверку авторизации
     fetch('/api/check-auth')
         .then(response => {
             if (!response.ok) {
@@ -96,27 +92,27 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             if (data.authenticated) {
-                // Пользователь авторизован
                 enterBtn.style.display = 'none';
                 replaceTxt.style.display = 'inline';
                 replaceTxt.textContent = data.email;
             } else {
-                // Пользователь не авторизован
                 enterBtn.style.display = '';
                 replaceTxt.style.display = 'none';
             }
         })
         .catch(error => {
             console.error('Error checking auth status:', error);
-            // В случае ошибки показываем кнопку входа
             enterBtn.style.display = '';
             replaceTxt.style.display = 'none';
         });
 });
 
+historyBtn.addEventListener('click', () => {
+  window.location.href = '/history';
+})
+
 replaceTxt.addEventListener('click', () => {
   document.addEventListener('DOMContentLoaded', function() {
-    // Создаем запрос на проверку авторизации
     fetch('/api/check-auth')
         .then(response => {
             if (!response.ok) {
@@ -126,19 +122,16 @@ replaceTxt.addEventListener('click', () => {
         })
         .then(data => {
             if (data.authenticated) {
-                // Пользователь авторизован
                 enterBtn.style.display = 'none';
                 replaceTxt.style.display = 'inline';
                 replaceTxt.textContent = data.email;
             } else {
-                // Пользователь не авторизован
                 enterBtn.style.display = '';
                 replaceTxt.style.display = 'none';
             }
         })
         .catch(error => {
             console.error('Error checking auth status:', error);
-            // В случае ошибки показываем кнопку входа
             enterBtn.style.display = '';
             replaceTxt.style.display = 'none';
         });
@@ -148,7 +141,6 @@ replaceTxt.addEventListener('click', () => {
 
 chooseBtn.addEventListener("click", () => {
   document.addEventListener('DOMContentLoaded', function() {
-    // Создаем запрос на проверку авторизации
     fetch('/api/check-auth')
         .then(response => {
             if (!response.ok) {
@@ -158,19 +150,16 @@ chooseBtn.addEventListener("click", () => {
         })
         .then(data => {
             if (data.authenticated) {
-                // Пользователь авторизован
                 enterBtn.style.display = 'none';
                 replaceTxt.style.display = 'inline';
                 replaceTxt.textContent = data.email;
             } else {
-                // Пользователь не авторизован
                 enterBtn.style.display = '';
                 replaceTxt.style.display = 'none';
             }
         })
         .catch(error => {
             console.error('Error checking auth status:', error);
-            // В случае ошибки показываем кнопку входа
             enterBtn.style.display = '';
             replaceTxt.style.display = 'none';
         });
@@ -178,17 +167,16 @@ chooseBtn.addEventListener("click", () => {
   window.location.href = '/chooseRules';
 })
 
-// Функция для обновления интерфейса в зависимости от авторизации
 function updateAuthUI(isAuthenticated, email = '') {
     if (isAuthenticated) {
         enterBtn.style.display = 'none';
         replaceTxt.style.display = 'inline';
         replaceTxt.textContent = email;
-        exitBtn.style.display = 'inline'; // Показываем кнопку Exit
+        exitBtn.style.display = 'inline';
     } else {
         enterBtn.style.display = '';
         replaceTxt.style.display = 'none';
-        exitBtn.style.display = 'none'; // Скрываем кнопку Exit
+        exitBtn.style.display = 'none';
     }
 }
 
@@ -205,16 +193,13 @@ homeBtn.addEventListener('click', () => {
 
 
 function logoutUser() {
-    // Отправляем запрос на сервер для выхода
     fetch('/logout', {
         method: 'POST',
-        credentials: 'same-origin' // Чтобы отправлялись куки
+        credentials: 'same-origin'
     })
     .then(response => {
         if (response.ok) {
-            // Успешный выход - обновляем UI
             updateAuthUI(false);
-            // Можно показать сообщение
             alert('Вы успешно вышли из системы');
             window.location.href = '/';
         } else {
@@ -227,7 +212,6 @@ function logoutUser() {
     });
 }
 
-// File selection UI
   fileLabelBtn.addEventListener('click', ()=> fileInput.click());
   fileInput.addEventListener('change', ()=>{
     if(fileInput.files && fileInput.files.length){
@@ -255,7 +239,6 @@ chalBtn.addEventListener('click', () => {
 
 })
 
-  // Tabs logic
   tabs.forEach(t=>{
     t.addEventListener('click', ()=>{
       tabs.forEach(x=>{
