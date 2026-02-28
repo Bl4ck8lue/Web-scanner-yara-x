@@ -106,17 +106,23 @@ func listRulesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func choosingHandler(w http.ResponseWriter, r *http.Request) {
-	path := filepath.Join(templateDir, "indexRules.html")
-	tmpl, err := template.ParseFiles(path)
-
+	c, err := r.Cookie("email")
 	if err != nil {
-		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
-		return
+		fmt.Println("Error")
 	}
+	if c.Value == "admin@admin.ru" {
+		path := filepath.Join(templateDir, "indexRules.html")
+		tmpl, err := template.ParseFiles(path)
 
-	if err := tmpl.Execute(w, nil); err != nil {
-		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
-		return
+		if err != nil {
+			http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := tmpl.Execute(w, nil); err != nil {
+			http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -179,17 +185,23 @@ func loadingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
-	path := filepath.Join(templateDir, "indexAd.html")
-	tmpl, err := template.ParseFiles(path)
-
+	c, err := r.Cookie("email")
 	if err != nil {
-		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
-		return
+		fmt.Println("Error")
 	}
+	if c.Value == "admin@admin.ru" {
+		path := filepath.Join(templateDir, "indexAd.html")
+		tmpl, err := template.ParseFiles(path)
 
-	if err := tmpl.Execute(w, nil); err != nil {
-		http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
-		return
+		if err != nil {
+			http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := tmpl.Execute(w, nil); err != nil {
+			http.Error(w, "render error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
