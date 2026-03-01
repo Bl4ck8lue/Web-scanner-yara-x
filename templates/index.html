@@ -427,6 +427,10 @@ scanBtn.addEventListener('click', () => {
   alert(rules);
   form.append('rules', rules);
 
+  const size = file.size/1024;
+  alert(size);
+  form.append('size', size);
+
   scanning = true;
   scanBtn.disabled = true;
   resetBtn.disabled = true;
