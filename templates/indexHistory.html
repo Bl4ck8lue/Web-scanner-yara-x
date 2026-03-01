@@ -136,14 +136,12 @@ selectBtn.addEventListener('click', () => {
             return response.json();
         })
         .then(data => {
-            if (data.authenticated) {
-                enterBtn.style.display = 'none';
-                replaceTxt.style.display = 'inline';
-                replaceTxt.textContent = data.email;
-            } else {
-                enterBtn.style.display = '';
-                replaceTxt.style.display = 'none';
-            }
+            cell1.innerHTML = data.id;
+            cell2.innerHTML = data.email;
+            cell3.innerHTML = data.filename;
+            cell4.innerHTML = data.size;
+            
+            cell6.innerHTML = data.threats_count;
         })
         .catch(error => {
             console.error('Error checking auth status:', error);
@@ -156,89 +154,7 @@ historyBtn.addEventListener('click', () => {
   window.location.href = '/history';
 })
 
-replaceTxt.addEventListener('click', () => {
-  document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/check-auth')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.authenticated) {
-                enterBtn.style.display = 'none';
-                replaceTxt.style.display = 'inline';
-                replaceTxt.textContent = data.email;
-            } else {
-                enterBtn.style.display = '';
-                replaceTxt.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error checking auth status:', error);
-            enterBtn.style.display = '';
-            replaceTxt.style.display = 'none';
-        });
-});
-  window.location.href = '/road';
-})
 
-loadBtn.addEventListener("click", () => {
-    document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/check-auth')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.authenticated) {
-                enterBtn.style.display = 'none';
-                replaceTxt.style.display = 'inline';
-                replaceTxt.textContent = data.email;
-            } else {
-                enterBtn.style.display = '';
-                replaceTxt.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error checking auth status:', error);
-            enterBtn.style.display = '';
-            replaceTxt.style.display = 'none';
-        });
-});
-  window.location.href = '/settings';
-})
-
-chooseBtn.addEventListener("click", () => {
-  document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/check-auth')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.authenticated) {
-                enterBtn.style.display = 'none';
-                replaceTxt.style.display = 'inline';
-                replaceTxt.textContent = data.email;
-            } else {
-                enterBtn.style.display = '';
-                replaceTxt.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error checking auth status:', error);
-            enterBtn.style.display = '';
-            replaceTxt.style.display = 'none';
-        });
-});
-  window.location.href = '/chooseRules';
-})
 
 function updateAuthUI(isAuthenticated, email = '') {
     if (isAuthenticated) {
