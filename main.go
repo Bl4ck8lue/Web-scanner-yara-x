@@ -63,54 +63,54 @@ func main() {
 
 func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("email")
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
 	if err != nil {
-		log.Fatal("Hе удалось подключиться к БД:", err)
+		http.Error(w, "db connection error", http.StatusInternalServerError)
+		return
 	}
 	defer conn.Close(context.Background())
 
-	// Выполняем простой SQL-запрос
-	var id string
-	err = conn.QueryRow(context.Background(), "select id from scanfiles where email = $1", c.Value).Scan(&id)
+	rows, err := conn.Query(context.Background(),
+		"SELECT id, email, filename, size, date, threats_count FROM scanfiles WHERE email = $1",
+		c.Value)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, "query error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var results []map[string]any
+	for rows.Next() {
+		var id, filename, size, threats_count string
+		var date time.Time
+
+		if err := rows.Scan(&id, &c.Value, &filename, &size, &date, &threats_count); err != nil {
+			http.Error(w, "scan error", http.StatusInternalServerError)
+			return
+		}
+
+		results = append(results, map[string]any{
+			"id":            id,
+			"email":         c.Value,
+			"filename":      filename,
+			"size":          size,
+			"date":          date.Format("02-01-2006"),
+			"threats_count": threats_count,
+		})
 	}
 
-	var filename string
-	err = conn.QueryRow(context.Background(), "select filename from scanfiles where email = $1", c.Value).Scan(&filename)
-	if err != nil {
-		log.Fatal(err)
+	if err := rows.Err(); err != nil {
+		http.Error(w, "rows error", http.StatusInternalServerError)
+		return
 	}
 
-	var size string
-	err = conn.QueryRow(context.Background(), "select size from scanfiles where email = $1", c.Value).Scan(&size)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	/*var date string
-	err = conn.QueryRow(context.Background(), "select date from scanfiles where email = $1", c.Value).Scan(&date)
-	if err != nil {
-		log.Fatal(err)
-	}*/
-
-	var threats_count string
-	err = conn.QueryRow(context.Background(), "select threats_count from scanfiles where email = $1", c.Value).Scan(&threats_count)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	resp := map[string]any{
-		"id":       id,
-		"email":    c.Value,
-		"filename": filename,
-		"size":     size,
-		//"date":          date,
-		"threats_count": threats_count,
-	}
-	//fmt.Println(string(out))
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(results)
 }
 
 func histHandler(w http.ResponseWriter, r *http.Request) {
