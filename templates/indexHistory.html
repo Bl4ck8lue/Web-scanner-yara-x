@@ -43,8 +43,6 @@
         <thead>
             <!--Заголовки-->
             <tr>
-                <th>ID</th>
-                <th>Email</th>
 			    <th>Filename</th>
 			    <th>Size (KB)</th>
 			    <th>Date</th>
@@ -144,8 +142,6 @@ selectBtn.addEventListener('click', () => {
             files.forEach(file => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${file.id}</td>
-                    <td>${file.email}</td>
                     <td>${file.filename}</td>
                     <td>${file.size}</td>
                     <td>${file.date}</td>

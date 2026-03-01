@@ -95,8 +95,6 @@ func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		results = append(results, map[string]any{
-			"id":            id,
-			"email":         c.Value,
 			"filename":      filename,
 			"size":          size,
 			"date":          date.Format("02-01-2006"),
