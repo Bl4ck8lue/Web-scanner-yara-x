@@ -642,7 +642,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(rulesPath)
 
-	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, tmpPath, rulesPath)
+	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, rulesPath, tmpPath)
 	out, err := cmd.CombinedOutput()
 
 	currentTime := time.Now()
