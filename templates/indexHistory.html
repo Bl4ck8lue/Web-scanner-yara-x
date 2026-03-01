@@ -46,7 +46,7 @@
                 <th>ID</th>
                 <th>Email</th>
 			    <th>Filename</th>
-			    <th>Size</th>
+			    <th>Size (KB)</th>
 			    <th>Date</th>
 			    <th>Threat-Counts</th>
 		    </tr>
@@ -129,25 +129,32 @@ selectBtn.addEventListener('click', () => {
     var cell6 = newRow.insertCell(5);
 
     fetch('/api/scanfiles')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+        .then(r => {
+            if (!r.ok) throw new Error('Failed to fetch');
+            return r.json();
+        })
+        .then(files => {
+            table.innerHTML = '';
+
+            if (!files || files.length === 0) {
+                table.innerHTML = '<tr><td colspan="5">Нет данных</td></tr>';
+                return;
             }
-            return response.json();
+
+            files.forEach(file => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${file.id}</td>
+                    <td>${file.email}</td>
+                    <td>${file.filename}</td>
+                    <td>${file.size}</td>
+                    <td>${file.date}</td>
+                    <td>${file.threats_count}</td>
+                `;
+                table.appendChild(tr);
+            });
         })
-        .then(data => {
-            cell1.innerHTML = data.id;
-            cell2.innerHTML = data.email;
-            cell3.innerHTML = data.filename;
-            cell4.innerHTML = data.size;
-            
-            cell6.innerHTML = data.threats_count;
-        })
-        .catch(error => {
-            console.error('Error checking auth status:', error);
-            enterBtn.style.display = '';
-            replaceTxt.style.display = 'none';
-        });
+        .catch(err => console.error('Error loading scan files:', err));
 })
 
 historyBtn.addEventListener('click', () => {
