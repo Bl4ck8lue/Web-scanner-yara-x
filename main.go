@@ -55,8 +55,8 @@ func main() {
 	http.HandleFunc("/history", histHandler)
 	http.HandleFunc("/api/scanfiles", scanfilesHandler)
 
-	fmt.Println("Starting server at :8085")
-	if err := http.ListenAndServe(":8085", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	fmt.Println("Starting server at :8025")
+	if err := http.ListenAndServe(":8025", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("server error:", err)
 	}
 }
@@ -70,11 +70,47 @@ func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close(context.Background())
 
 	// Выполняем простой SQL-запрос
-	var greeting string
-	err = conn.QueryRow(context.Background(), "select * from reg_users where email = $1", c.Value).Scan(&greeting)
+	var id string
+	err = conn.QueryRow(context.Background(), "select id from scanfiles where email = $1", c.Value).Scan(&id)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	var filename string
+	err = conn.QueryRow(context.Background(), "select filename from scanfiles where email = $1", c.Value).Scan(&filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var size string
+	err = conn.QueryRow(context.Background(), "select size from scanfiles where email = $1", c.Value).Scan(&size)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	/*var date string
+	err = conn.QueryRow(context.Background(), "select date from scanfiles where email = $1", c.Value).Scan(&date)
+	if err != nil {
+		log.Fatal(err)
+	}*/
+
+	var threats_count string
+	err = conn.QueryRow(context.Background(), "select threats_count from scanfiles where email = $1", c.Value).Scan(&threats_count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resp := map[string]any{
+		"id":       id,
+		"email":    c.Value,
+		"filename": filename,
+		"size":     size,
+		//"date":          date,
+		"threats_count": threats_count,
+	}
+	//fmt.Println(string(out))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func histHandler(w http.ResponseWriter, r *http.Request) {
@@ -616,7 +652,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	tmpPath := tmp.Name()
 	defer func() {
 		tmp.Close()
-		_ = os.Remove(tmpPath)
+		// _ = os.Remove(tmpPath)
 	}()
 
 	// копируем содержимое
@@ -646,6 +682,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	out, err := cmd.CombinedOutput()
 
 	currentTime := time.Now()
+
 	c, err := r.Cookie("email")
 	addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), 0)
 
