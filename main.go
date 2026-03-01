@@ -53,10 +53,27 @@ func main() {
 	http.HandleFunc("/api/list-rules", listRulesHandler)
 	http.HandleFunc("/road", roadHandler)
 	http.HandleFunc("/history", histHandler)
+	http.HandleFunc("/api/scanfiles", scanfilesHandler)
 
 	fmt.Println("Starting server at :8085")
 	if err := http.ListenAndServe(":8085", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("server error:", err)
+	}
+}
+
+func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("email")
+	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
+	if err != nil {
+		log.Fatal("Hе удалось подключиться к БД:", err)
+	}
+	defer conn.Close(context.Background())
+
+	// Выполняем простой SQL-запрос
+	var greeting string
+	err = conn.QueryRow(context.Background(), "select * from reg_users where email = $1", c.Value).Scan(&greeting)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -544,6 +561,19 @@ func deleteCookieFromDB(r *http.Request) {
 	}
 }
 
+func addScanFiles(email string, filename string, size string, date string, threats int) {
+	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
+	if err != nil {
+		log.Fatal("Hе удалось подключиться к БД:", err)
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(), "insert into scanfiles (email, filename, size, date, threats_count) values ($1, $2, $3, $4, $5)", email, filename, size, date, threats)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 // scanHandler: принимает multipart form field "file", сохраняет временно, вызывает python скрипт,
 // ждёт результата и возвращает JSON с { exit_code, output }
 func scanHandler(w http.ResponseWriter, r *http.Request) {
@@ -565,6 +595,12 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	filename := filepath.Base(header.Filename)
 
 	rules := r.FormValue("rules")
+	if err != nil {
+		http.Error(w, "missing rules field", http.StatusBadRequest)
+		return
+	}
+
+	size := r.FormValue("size")
 	if err != nil {
 		http.Error(w, "missing rules field", http.StatusBadRequest)
 		return
@@ -608,6 +644,10 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 
 	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, tmpPath, rulesPath)
 	out, err := cmd.CombinedOutput()
+
+	currentTime := time.Now()
+	c, err := r.Cookie("email")
+	addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), 0)
 
 	// timeout?
 	if ctx.Err() == context.DeadlineExceeded {
