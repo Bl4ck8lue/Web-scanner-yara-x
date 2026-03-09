@@ -69,6 +69,21 @@
   <div class="result" id="resultText" aria-live="polite" style="display:none"></div>
 </main>
 
+<!-- В конце body, один раз -->
+<div id="toast" style="
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #333;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 9999;
+  transition: opacity 0.3s;
+"></div>
+
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
   <div class="modal" role="document" aria-labelledby="modalTitle">
     <button class="close-x" id="modalClose" aria-label="Close">&times;</button>
@@ -82,11 +97,11 @@
       <div id="loginFields">
         <div class="form-group">
           <label for="loginEmail">Email</label>
-          <input id="loginEmail" type="email" required placeholder="you@example.com" />
+          <input id="loginEmail" type="email" placeholder="you@example.com" />
         </div>
         <div class="form-group">
           <label for="loginPassword">Password</label>
-          <input id="loginPassword" type="password" required placeholder="••••••••" />
+          <input id="loginPassword" type="password" placeholder="••••••••" />
         </div>
         <div class="actions">
           <button id="signBtn" type="submit" class="btn">Sign in</button>
@@ -96,19 +111,19 @@
       <div id="registerFields" style="display:none">
         <div class="form-group">
           <label for="regName">Full name</label>
-          <input id="regName" type="text" required placeholder="Ivan Ivanov" />
+          <input id="regName" type="text" placeholder="Ivan Ivanov" />
         </div>
         <div class="form-group">
           <label for="regEmail">Email</label>
-          <input id="regEmail" type="email" required placeholder="you@example.com" />
+          <input id="regEmail" type="email" placeholder="you@example.com" />
         </div>
         <div class="form-group">
           <label for="regPassword">Password</label>
-          <input id="regPassword" type="password" required placeholder="Минимум 8 символов" />
+          <input id="regPassword" type="password" placeholder="Минимум 8 символов" />
         </div>
         <div class="form-group">
           <label for="regPassword2">Confirm password</label>
-          <input id="regPassword2" type="password" required placeholder="Повторите пароль" />
+          <input id="regPassword2" type="password" placeholder="Повторите пароль" />
         </div>
         <div class="actions">
           <div style="margin-top:10px;color:var(--muted);font-size:13px">
@@ -245,11 +260,11 @@ replaceTxt.addEventListener('click', () => {
             replaceTxt.style.display = 'none';
         });
     });
-    alert(replaceTxt.textContent);
+    showToast(replaceTxt.textContent);
     if (replaceTxt.textContent == "admin@admin.ru") {
       window.location.href = '/road';
     } else {
-      alert("You are not an admin!");
+      showToast("You are not an admin!");
     }
 })
 
@@ -265,21 +280,36 @@ function logoutUser() {
             // Очищаем поля формы входа
             document.getElementById('loginEmail').value = '';
             document.getElementById('loginPassword').value = '';
-            alert('Вы успешно вышли из системы');
+            showToast('Вы успешно вышли из системы');
         } else {
             throw new Error('Logout failed');
         }
     })
     .catch(error => {
         console.error('Logout error:', error);
-        alert('Ошибка при выходе из системы');
+        showToast('Ошибка при выходе из системы');
     });
+}
+
+function showToast(message, duration = 3000) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+
+  setTimeout(() => {
+    // Плавно скрываем
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 300); // ждём завершения transition
+  }, duration);
 }
 
 function openModal(){
   modalBackdrop.style.display = 'flex';
   modalBackdrop.setAttribute('aria-hidden','false');
-  setTimeout(()=>document.getElementById('loginEmail').focus(), 100);
+  setTimeout(()=>document.getElementById('loginEmail').focus(), 5);
 }
 
 function closeModal(){
@@ -317,17 +347,17 @@ authForm.addEventListener('submit', (e)=>{
   if(activeTab === 'login'){
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPassword').value;
-    if(!email || !pass){ alert('Заполните поля'); return; }
-    alert('Успешный вход (демо).');
+    if(!email || !pass){ showToast('Заполните поля'); return; }
+    showToast('Успешный вход (демо).');
     closeModal();
   } else {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const p1 = document.getElementById('regPassword').value;
     const p2 = document.getElementById('regPassword2').value;
-    if(!name || !email || !p1 || !p2){ alert('Заполните поля'); return; }
-    if(p1.length < 8){ alert('Пароль должен быть минимум 8 символов'); return; }
-    if(p1 !== p2){ alert('Пароли не совпадают'); return; }
+    if(!name || !email || !p1 || !p2){ showToast('Заполните поля'); return; }
+    if(p1.length < 8){ showToast('Пароль должен быть минимум 8 символов'); return; }
+    if(p1 !== p2){ showToast('Пароли не совпадают'); return; }
     closeModal();
   }
 });
@@ -337,9 +367,9 @@ regBtn.addEventListener('click', () => {
   const email = document.getElementById('regEmail').value.trim();
   const p1 = document.getElementById('regPassword').value;
   const p2 = document.getElementById('regPassword2').value;
-  if(!name || !email || !p1 || !p2){ alert('Заполните поля'); return; }
-  if(p1.length < 8){ alert('Пароль должен быть минимум 8 символов'); return; }
-  if(p1 !== p2){ alert('Пароли не совпадают'); return; }
+  if(!name || !email || !p1 || !p2){ showToast('Заполните поля'); return; }
+  if(p1.length < 8){ showToast('Пароль должен быть минимум 8 символов'); return; }
+  if(p1 !== p2){ showToast('Пароли не совпадают'); return; }
     
   const form = new FormData();
   form.append('name', name);
@@ -353,7 +383,7 @@ regBtn.addEventListener('click', () => {
     if (xhr.readyState === 4) {
       if (xhr.status >= 200 && xhr.status < 300) {
         const res = JSON.parse(xhr.responseText);
-        alert(res.output);
+        showToast(res.output);
         document.getElementById('regName').value = '';
         document.getElementById('regEmail').value = '';
         document.getElementById('regPassword').value = '';
@@ -385,12 +415,13 @@ signBtn.addEventListener('click', ()=> {
             // Успешный вход
             updateAuthUI(true, loginEmail);
             closeModal();
+            showToast('Вы успешно вошли в систему');
           } else {
-            alert('Ошибка входа: неверные данные');
+            showToast('Ошибка входа: неверные данные');
           }
         } catch (e) {
           console.error('Error parsing response:', e);
-          alert('Ошибка при обработке ответа сервера');
+          showToast('Ошибка при обработке ответа сервера');
         }
       }
     }
@@ -418,17 +449,17 @@ fileInput.addEventListener('change', ()=>{
 let scanning = false;
 scanBtn.addEventListener('click', () => {
   if (scanning) return;
-  if (!fileInput.files.length) { alert('Выберите файл'); return; }
+  if (!fileInput.files.length) { showToast('Выберите файл'); return; }
   const file = fileInput.files[0];
   const form = new FormData();
   form.append('file', file);
 
   const rules = localStorage.getItem('activeRulesFile');
-  alert(rules);
+  showToast(rules);
   form.append('rules', rules);
 
   const size = file.size/1024;
-  alert(size);
+  showToast(size);
   form.append('size', size);
 
   scanning = true;
