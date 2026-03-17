@@ -67,6 +67,34 @@
   </div>
 
   <div class="result" id="resultText" aria-live="polite" style="display:none"></div>
+
+  <div id="scanReport" style="display:none; margin-top:28px; border-top:1px solid #e5eaf3; padding-top:22px;">
+    <h3 style="text-align:center; font-size:16px; font-weight:700; color:#0b2540; margin:0 0 16px; letter-spacing:0.3px; text-transform:uppercase;">Результат сканирования</h3>
+    <div id="scanReportInner" style="
+      background:#f8faff;
+      border:1px solid rgba(43,123,228,0.13);
+      border-radius:12px;
+      padding:20px 24px;
+      max-width:680px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:10px 18px;
+      font-size:14px;
+    ">
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">Имя файла</span>
+      <span id="rFileName" style="color:#0f172a; word-break:break-all;"></span>
+
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">Дата сканирования</span>
+      <span id="rDate" style="color:#0f172a;"></span>
+
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">MD5 хэш</span>
+      <span id="rHash" style="color:#0f172a; font-family: 'Courier New', monospace; font-size:13px; word-break:break-all;"></span>
+
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">Потенциальные угрозы</span>
+      <span id="rThreats"></span>
+    </div>
+  </div>
 </main>
 
 <!-- В конце body, один раз -->
@@ -446,26 +474,45 @@ fileInput.addEventListener('change', ()=>{
   }
 });
 
+function formatScanDate(date) {
+  const d = String(date.getDate()).padStart(2,'0');
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const y = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2,'0');
+  const mm = String(date.getMinutes()).padStart(2,'0');
+  const ss = String(date.getSeconds()).padStart(2,'0');
+  return `${d}.${m}.${y} ${hh}:${mm}:${ss}`;
+}
+
+function showScanReport(filename, hash, threatsHtml) {
+  document.getElementById('rFileName').textContent = filename;
+  document.getElementById('rDate').textContent = formatScanDate(new Date());
+  document.getElementById('rHash').textContent = hash;
+  document.getElementById('rThreats').innerHTML = threatsHtml;
+  document.getElementById('scanReport').style.display = '';
+  document.getElementById('scanReport').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 let scanning = false;
 scanBtn.addEventListener('click', () => {
   if (scanning) return;
   if (!fileInput.files.length) { showToast('Выберите файл'); return; }
   const file = fileInput.files[0];
+
   const form = new FormData();
   form.append('file', file);
 
   const rules = localStorage.getItem('activeRulesFile');
-  showToast(rules);
   form.append('rules', rules);
 
   const size = file.size/1024;
-  showToast(size);
   form.append('size', size);
 
   scanning = true;
   scanBtn.disabled = true;
   resetBtn.disabled = true;
   resultText.style.display = 'none';
+  document.getElementById('scanReport').style.display = 'none';
   statusText.textContent = 'Uploading...';
   progressBar.style.width = '0%';
 
@@ -481,30 +528,47 @@ scanBtn.addEventListener('click', () => {
 
   xhr.onreadystatechange = () => {
     if (xhr.readyState === 4) {
-      // загрузка + сервер ответили
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const res = JSON.parse(xhr.responseText);
-          let parsed = null;
-          try { parsed = JSON.parse(res.output); } catch(e) { parsed = null; }
 
-          if (parsed) {
-            // показываем результат сканера
-            if (parsed.infected) {
-              resultText.style.color = 'var(--danger)';
-              resultText.textContent = 'Внимание: файл содержит подозрительные сигнатуры — возможное вредоносное ПО.';
-            } else {
-              resultText.style.color = 'var(--success)';
-              resultText.textContent = res.output;
-            }
-            resultText.style.display = '';
-            console.log('scanner result:', parsed);
-          } else {
-            resultText.style.color = 'var(--muted)';
-            resultText.textContent = res.output || '(no output)';
-            resultText.style.display = '';
+          // MD5-хэш вычислен на стороне сервера (Go) и передан в поле "hash"
+          const fileHash = res.hash || '—';
+
+          const rawOutput = (res.output || '').trim();
+
+          // Парсим список угроз из вывода скрипта
+          // Формат: "Check:\nRuleName1\nRuleName2\n..."
+          let threats = [];
+          const lines = rawOutput.split('\n').map(l => l.trim()).filter(Boolean);
+          const checkIdx = lines.findIndex(l => l.toLowerCase() === 'check:');
+          if (checkIdx !== -1) {
+            threats = lines.slice(checkIdx + 1).filter(l => l.length > 0);
+          } else if (rawOutput.length > 0 && rawOutput !== '(no output)') {
+            try {
+              const parsed = JSON.parse(rawOutput);
+              if (parsed && parsed.matches) {
+                threats = parsed.matches.map(m => m.rule || String(m));
+              }
+            } catch(e) { /* не JSON */ }
           }
 
+          // Формируем HTML для угроз
+          let threatsHtml;
+          if (threats.length === 0) {
+            threatsHtml = '<span style="color:var(--success);font-weight:600;">Угроз не обнаружено</span>';
+            resultText.style.color = 'var(--success)';
+            resultText.textContent = 'Файл чист — подозрительных сигнатур не найдено.';
+          } else {
+            threatsHtml = threats.map(t =>
+              `<span style="display:inline-block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;padding:2px 10px;margin:2px 4px 2px 0;font-size:13px;font-weight:600;">${t}</span>`
+            ).join('');
+            resultText.style.color = 'var(--danger)';
+            resultText.textContent = `Обнаружено угроз: ${threats.length} — файл содержит подозрительные сигнатуры.`;
+          }
+
+          resultText.style.display = '';
+          showScanReport(file.name, fileHash, threatsHtml);
           statusText.textContent = 'Scan complete.';
           progressBar.style.width = '100%';
         } catch (err) {
@@ -551,6 +615,7 @@ resetBtn.addEventListener('click', ()=>{
   progressBar.style.width = '0%';
   statusText.textContent = 'Your files are waiting to be scanned...';
   resultText.style.display = 'none';
+  document.getElementById('scanReport').style.display = 'none';
 });
 
 document.addEventListener('keydown', (e)=>{
