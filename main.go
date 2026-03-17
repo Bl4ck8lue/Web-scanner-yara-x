@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"crypto/md5"
@@ -23,12 +24,12 @@ import (
 var (
 	staticDir   = "./static"
 	templateDir = "./templates"
-	// настройки
+
 	maxUploadSize int64 = 100 << 20 // 100 MiB
-	// параллельных сканирований
+
 	concurrency = 4
 	sem         = make(chan struct{}, 4)
-	// python скрипт (относительный или абсолютный путь) — поправь под своё расположение
+
 	pythonBin   = "python3"
 	scriptPath  = "./scripts/analyze.py"
 	scriptPath1 = "./scripts/registr.py"
@@ -201,9 +202,9 @@ func choosingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-const uploadDir = "./scripts" // целевая директория для сохранения файлов
+const uploadDir = "./scripts"
+
 func loadingHandler(w http.ResponseWriter, r *http.Request) {
-	// Ограничить размер тела запроса
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "request too large or malformed", http.StatusBadRequest)
@@ -217,33 +218,26 @@ func loadingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Безопасное имя файла (только базовая часть)
 	filename := filepath.Base(header.Filename)
 
-	// Убедимся, что целевая директория существует
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		http.Error(w, "internal error: cannot create upload directory", http.StatusInternalServerError)
 		return
 	}
 
-	// Создаём временный файл в нужной папке с уникальным именем
-	// Шаблон "scan-*-" + оригинальное имя файла (без пути)
 	tmp, err := os.Create("./rules/" + filename)
 	if err != nil {
 		http.Error(w, "internal error creating file", http.StatusInternalServerError)
 		return
 	}
 
-	// Закрываем файл при выходе, но НЕ удаляем (файл остаётся в uploadDir)
 	defer tmp.Close()
 
-	// копируем содержимое
 	if _, err := io.Copy(tmp, file); err != nil {
 		http.Error(w, "failed to save uploaded file", http.StatusInternalServerError)
 		return
 	}
 
-	// семафор параллелизма
 	select {
 	case sem <- struct{}{}:
 		defer func() { <-sem }()
@@ -251,10 +245,7 @@ func loadingHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server busy, try later", http.StatusTooManyRequests)
 		return
 	}
-	// Здесь можно добавить дальнейшую обработку файла (например, антивирусная проверка)
-	// ...
 
-	// Успешный ответ
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("file uploaded successfully"))
 }
@@ -328,7 +319,6 @@ func regInDB(name string, email string, pass string) int {
 	}
 	defer conn.Close(context.Background())
 
-	// Выполняем простой SQL-запрос
 	var greeting string
 	err = conn.QueryRow(context.Background(), "select count(*) from reg_users where email = $1", email).Scan(&greeting)
 	if err != nil {
@@ -346,14 +336,11 @@ func regInDB(name string, email string, pass string) int {
 		log.Fatal(err)
 	}
 
-	// Выводим результат
 	fmt.Println("Added")
 	return 1
 }
 
 func regHandler(w http.ResponseWriter, r *http.Request) {
-
-	// Ограничить размер тела
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "request too large or malformed", http.StatusBadRequest)
@@ -422,7 +409,6 @@ func setCookieDB(email string, w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close(context.Background())
 
-	// Удаляем старые сессии для этого пользователя
 	_, err = conn.Exec(context.Background(),
 		"DELETE FROM cookie WHERE email = $1",
 		email)
@@ -430,7 +416,6 @@ func setCookieDB(email string, w http.ResponseWriter, r *http.Request) {
 		log.Printf("Ошибка удаления старых сессий: %v", err)
 	}
 
-	// Создаем новую сессию
 	cookie := http.Cookie{
 		Name:     "email",
 		Value:    email,
@@ -442,7 +427,6 @@ func setCookieDB(email string, w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &cookie)
 
-	// Сохраняем в БД
 	_, err = conn.Exec(context.Background(),
 		"INSERT INTO cookie (email, value, maxage) VALUES ($1, $2, $3)",
 		email, email, 3600)
@@ -452,16 +436,12 @@ func setCookieDB(email string, w http.ResponseWriter, r *http.Request) {
 }
 
 func signInDB(email string, pass string, w http.ResponseWriter, r *http.Request) int {
-	//postgres://ilya:4suh12iiyu@localhost:5432/web_scanner
-	//postrges://DB_USER:DB_PASSWORD@DB_HOST:5432/DB_NAME
-	// Устанавливаем соединение с базой данных
 	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
 	if err != nil {
 		log.Fatal("не удалось подключиться к БД:", err)
 	}
 	defer conn.Close(context.Background())
 
-	// Выполняем простой SQL-запрос
 	var greeting string
 	err = conn.QueryRow(context.Background(), "select count(*) from reg_users where email = $1", email).Scan(&greeting)
 	if err != nil {
@@ -493,13 +473,11 @@ func signInDB(email string, pass string, w http.ResponseWriter, r *http.Request)
 		return 225
 	}
 
-	// Выводим результат
 	fmt.Println(greeting)
 	return res
 }
 
 func signHandler(w http.ResponseWriter, r *http.Request) {
-	// Ограничить размер тела
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "request too large or malformed", http.StatusBadRequest)
@@ -552,9 +530,7 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(resp)*/
 }
 
-// Добавьте новый обработчик для выхода
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	// Удаляем куку, устанавливая MaxAge в -1
 	cookie := &http.Cookie{
 		Name:     "email",
 		Value:    "",
@@ -566,17 +542,13 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 
-	// Также можно удалить запись из БД, если это необходимо
 	deleteCookieFromDB(r)
 
-	// Возвращаем успешный статус
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Logged out successfully"))
 }
 
-// Функция для удаления куки из БД (опционально)
 func deleteCookieFromDB(r *http.Request) {
-	// Получаем email из куки перед удалением
 	if cookie, err := r.Cookie("email"); err == nil {
 		conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
 		if err != nil {
@@ -585,7 +557,6 @@ func deleteCookieFromDB(r *http.Request) {
 		}
 		defer conn.Close(context.Background())
 
-		// Удаляем запись из таблицы cookie или устанавливаем maxage = -1
 		_, err = conn.Exec(context.Background(),
 			"UPDATE cookie SET maxage = -1 WHERE email = $1",
 			cookie.Value)
@@ -608,11 +579,8 @@ func addScanFiles(email string, filename string, size string, date string, threa
 	}
 }
 
-// scanHandler: принимает multipart form field "file", сохраняет временно, вызывает python скрипт,
-// ждёт результата и возвращает JSON с { exit_code, output }
 func scanHandler(w http.ResponseWriter, r *http.Request) {
 	rulesPath = "./rules/"
-	// Ограничить размер тела
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "request too large or malformed", http.StatusBadRequest)
@@ -653,13 +621,20 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		// _ = os.Remove(tmpPath)
 	}()
 
-	// копируем содержимое
-	if _, err := io.Copy(tmp, file); err != nil {
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		http.Error(w, "failed to read uploaded file", http.StatusInternalServerError)
+		return
+	}
+
+	rawHash := md5.Sum(fileBytes)
+	fileHash := hex.EncodeToString(rawHash[:])
+
+	if _, err := tmp.Write(fileBytes); err != nil {
 		http.Error(w, "failed to save uploaded file", http.StatusInternalServerError)
 		return
 	}
 
-	// семафор параллелизма
 	select {
 	case sem <- struct{}{}:
 		defer func() { <-sem }()
@@ -679,18 +654,11 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, rulesPath, tmpPath)
 	out, err := cmd.CombinedOutput()
 
-	currentTime := time.Now()
-
-	c, err := r.Cookie("email")
-	addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), 0)
-
-	// timeout?
 	if ctx.Err() == context.DeadlineExceeded {
 		http.Error(w, "scan timeout", http.StatusGatewayTimeout)
 		return
 	}
 
-	// подготовить код возврата
 	exitCode := 0
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
@@ -703,14 +671,32 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		exitCode = cmd.ProcessState.ExitCode()
 	}
 
-	fmt.Println(string(out))
-
-	// Формируем ответ — возвращаем stdout (ожидаем JSON от скрипта)
-	resp := map[string]any{
-		"exit_code": exitCode,
-		"output":    string(out),
+	threatsCount := 0
+	afterCheck := false
+	for _, line := range strings.Split(string(out), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.ToLower(trimmed) == "check:" {
+			afterCheck = true
+			continue
+		}
+		if afterCheck && trimmed != "" {
+			threatsCount++
+		}
 	}
-	//fmt.Println(string(out))
+
+	fmt.Printf("Threats found: %d\n", threatsCount)
+
+	currentTime := time.Now()
+	c, err := r.Cookie("email")
+	addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), threatsCount)
+
+	// Формируем ответ
+	resp := map[string]any{
+		"exit_code":     exitCode,
+		"output":        string(out),
+		"hash":          fileHash,
+		"threats_count": threatsCount,
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
