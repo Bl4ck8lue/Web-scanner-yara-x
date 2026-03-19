@@ -53,7 +53,7 @@
     </div>
   </div>
 
-  <div class="progress" aria-hidden="false" aria-label="Прогресс сканирования">
+  <div class="progress" aria-hidden="false" aria-label="Прогресс сканирования" style="height:6px;">
     <div class="bar" id="progressBar" style="width:0%"></div>
   </div>
 
@@ -64,6 +64,10 @@
     <input type="file" id="fileInput" aria-label="Выбрать файл для сканирования" />
     <button class="btn" id="scanBtn" disabled>Scan</button>
     <button class="btn secondary" id="resetBtn">Reset</button>
+  </div>
+
+  <div id="authNotice" style="display:none; margin-top:14px; text-align:center; padding:12px 20px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; color:#92400e; font-size:14px; font-weight:500;">
+    Для сканирования файлов необходимо <a href="#" id="authNoticeLink" style="color:#2b7be4;text-decoration:underline;">войти в аккаунт</a>
   </div>
 
   <div class="result" id="resultText" aria-live="polite" style="display:none"></div>
@@ -97,7 +101,6 @@
   </div>
 </main>
 
-<!-- В конце body, один раз -->
 <div id="toast" style="
   display: none;
   position: fixed;
@@ -232,6 +235,26 @@ function updateAuthUI(isAuthenticated, email = '') {
         enterBtn.style.display = '';
         replaceTxt.style.display = 'none';
         exitBtn.style.display = 'none';
+    }
+    setScanControlsAuth(isAuthenticated);
+}
+
+function setScanControlsAuth(isAuthenticated) {
+    const notice = document.getElementById('authNotice');
+    if (isAuthenticated) {
+        fileLabelBtn.style.pointerEvents = '';
+        fileLabelBtn.style.opacity = '';
+        fileLabelBtn.title = '';
+        resetBtn.disabled = false;
+        notice.style.display = 'none';
+    } else {
+        fileLabelBtn.style.pointerEvents = 'none';
+        fileLabelBtn.style.opacity = '0.45';
+        fileLabelBtn.title = 'Войдите в аккаунт для выбора файла';
+        scanBtn.disabled = true;
+        resetBtn.disabled = true;
+        fileInput.value = '';
+        notice.style.display = '';
     }
 }
 
@@ -458,7 +481,25 @@ signBtn.addEventListener('click', ()=> {
   xhr.send(form);
 });
 
-fileLabelBtn.addEventListener('click', ()=> fileInput.click());
+document.getElementById('authNoticeLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  openModal();
+});
+
+fileLabelBtn.addEventListener('click', () => {
+  // Проверяем авторизацию перед открытием диалога выбора файла
+  fetch('/api/check-auth')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.authenticated) {
+        setScanControlsAuth(false);
+        showToast('Войдите в аккаунт, чтобы выбрать файл');
+        return;
+      }
+      fileInput.click();
+    })
+    .catch(() => fileInput.click());
+});
 fileInput.addEventListener('change', ()=>{
   if(fileInput.files && fileInput.files.length){
     const f = fileInput.files[0];
@@ -493,31 +534,26 @@ function showScanReport(filename, hash, threatsHtml) {
   document.getElementById('scanReport').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Один глобальный интервал для анимации прогресс-бара во время сканирования
 let progressTick = null;
 let progressValue = 0;
 
 function startProgressAnimation() {
-  // Фаза загрузки файла: 0 → 30%
   progressValue = 0;
   progressBar.style.width = '0%';
 
   progressTick = setInterval(() => {
-    // Плавно ползём от текущего значения к 90%, замедляясь по мере приближения
     const gap = 90 - progressValue;
-    progressValue += gap * 0.04; // экспоненциальное замедление — никогда не достигает 90%
+    progressValue += gap * 0.04;
     progressBar.style.width = progressValue.toFixed(2) + '%';
   }, 100);
 }
 
 function finishProgressAnimation(onDone) {
-  // Останавливаем имитационный тикер и резко доводим до 100%
   if (progressTick) {
     clearInterval(progressTick);
     progressTick = null;
   }
   progressBar.style.width = '100%';
-  // Ждём завершения CSS-перехода (300 мс задан в .bar) и вызываем колбэк
   setTimeout(onDone, 350);
 }
 
@@ -559,7 +595,6 @@ scanBtn.addEventListener('click', () => {
 
   xhr.upload.addEventListener('progress', (e) => {
     if (e.lengthComputable) {
-      // Загрузка файла занимает диапазон 0–40% прогресса
       const uploadPercent = (e.loaded / e.total) * 40;
       if (uploadPercent > progressValue) {
         progressValue = uploadPercent;
@@ -579,13 +614,10 @@ scanBtn.addEventListener('click', () => {
         try {
           const res = JSON.parse(xhr.responseText);
 
-          // MD5-хэш вычислен на стороне сервера (Go) и передан в поле "hash"
           const fileHash = res.hash || '—';
 
           const rawOutput = (res.output || '').trim();
 
-          // Парсим список угроз из вывода скрипта
-          // Формат: "Check:\nRuleName1\nRuleName2\n..."
           let threats = [];
           const lines = rawOutput.split('\n').map(l => l.trim()).filter(Boolean);
           const checkIdx = lines.findIndex(l => l.toLowerCase() === 'check:');
@@ -597,16 +629,21 @@ scanBtn.addEventListener('click', () => {
               if (parsed && parsed.matches) {
                 threats = parsed.matches.map(m => m.rule || String(m));
               }
-            } catch(e) { /* не JSON */ }
+            } catch(e) { }
           }
 
-          // Формируем HTML для угроз
           let threatsHtml;
           if (threats.length === 0) {
             threatsHtml = '<span style="color:var(--success);font-weight:600;">Угроз не обнаружено</span>';
             resultText.style.color = 'var(--success)';
             resultText.textContent = 'Файл чист — подозрительных сигнатур не найдено.';
+          } else if (threats.length > 3) {
+            // Слишком много угроз — отправляем на страницу истории
+            threatsHtml = `<span style="color:var(--danger);font-weight:600;">Обнаружено более 3 угроз. Получите подробную информацию на странице <a href="/history" style="color:var(--primary);text-decoration:underline;">История</a></span>`;
+            resultText.style.color = 'var(--danger)';
+            resultText.textContent = `Обнаружено ${threats.length} угроз — подробности на странице История.`;
           } else {
+            // 1–3 угрозы — показываем названия
             threatsHtml = threats.map(t =>
               `<span style="display:inline-block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;padding:2px 10px;margin:2px 4px 2px 0;font-size:13px;font-weight:600;">${t}</span>`
             ).join('');
