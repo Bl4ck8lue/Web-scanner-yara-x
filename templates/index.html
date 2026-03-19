@@ -493,6 +493,43 @@ function showScanReport(filename, hash, threatsHtml) {
   document.getElementById('scanReport').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// Один глобальный интервал для анимации прогресс-бара во время сканирования
+let progressTick = null;
+let progressValue = 0;
+
+function startProgressAnimation() {
+  // Фаза загрузки файла: 0 → 30%
+  progressValue = 0;
+  progressBar.style.width = '0%';
+
+  progressTick = setInterval(() => {
+    // Плавно ползём от текущего значения к 90%, замедляясь по мере приближения
+    const gap = 90 - progressValue;
+    progressValue += gap * 0.04; // экспоненциальное замедление — никогда не достигает 90%
+    progressBar.style.width = progressValue.toFixed(2) + '%';
+  }, 100);
+}
+
+function finishProgressAnimation(onDone) {
+  // Останавливаем имитационный тикер и резко доводим до 100%
+  if (progressTick) {
+    clearInterval(progressTick);
+    progressTick = null;
+  }
+  progressBar.style.width = '100%';
+  // Ждём завершения CSS-перехода (300 мс задан в .bar) и вызываем колбэк
+  setTimeout(onDone, 350);
+}
+
+function resetProgressAnimation() {
+  if (progressTick) {
+    clearInterval(progressTick);
+    progressTick = null;
+  }
+  progressValue = 0;
+  progressBar.style.width = '0%';
+}
+
 let scanning = false;
 scanBtn.addEventListener('click', () => {
   if (scanning) return;
@@ -514,20 +551,30 @@ scanBtn.addEventListener('click', () => {
   resultText.style.display = 'none';
   document.getElementById('scanReport').style.display = 'none';
   statusText.textContent = 'Uploading...';
-  progressBar.style.width = '0%';
+
+  startProgressAnimation();
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/scan', true);
 
   xhr.upload.addEventListener('progress', (e) => {
     if (e.lengthComputable) {
-      const percent = Math.round((e.loaded / e.total));
-      progressBar.style.width = percent + '%';
+      // Загрузка файла занимает диапазон 0–40% прогресса
+      const uploadPercent = (e.loaded / e.total) * 40;
+      if (uploadPercent > progressValue) {
+        progressValue = uploadPercent;
+        progressBar.style.width = progressValue.toFixed(2) + '%';
+      }
+      if (e.loaded === e.total) {
+        statusText.textContent = 'Scanning on server...';
+      }
     }
   });
 
   xhr.onreadystatechange = () => {
-    if (xhr.readyState === 4) {
+    if (xhr.readyState !== 4) return;
+
+    finishProgressAnimation(() => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const res = JSON.parse(xhr.responseText);
@@ -570,7 +617,6 @@ scanBtn.addEventListener('click', () => {
           resultText.style.display = '';
           showScanReport(file.name, fileHash, threatsHtml);
           statusText.textContent = 'Scan complete.';
-          progressBar.style.width = '100%';
         } catch (err) {
           statusText.textContent = 'Ошибка парсинга ответа от сервера';
           resultText.style.display = '';
@@ -587,22 +633,7 @@ scanBtn.addEventListener('click', () => {
       scanning = false;
       resetBtn.disabled = false;
       scanBtn.disabled = false;
-    } else {
-      if (xhr.readyState === 2 || xhr.readyState === 3) {
-        const cur = parseFloat(progressBar.style.width) || 0;
-        if (cur < 50) progressBar.style.width = '50%';
-        statusText.textContent = 'Scanning on server...';
-        let p = Math.max(50, cur);
-        const tick = setInterval(() => {
-          if (p < 90) {
-            p += 1 + Math.random() * 2;
-            progressBar.style.width = Math.min(p, 90) + '%';
-          } else {
-            clearInterval(tick);
-          }
-        }, 200);
-      }
-    }
+    });
   };
 
   xhr.send(form);
@@ -612,7 +643,7 @@ resetBtn.addEventListener('click', ()=>{
   fileInput.value = '';
   fileLabelBtn.textContent = 'Choose file';
   scanBtn.disabled = true;
-  progressBar.style.width = '0%';
+  resetProgressAnimation();
   statusText.textContent = 'Your files are waiting to be scanned...';
   resultText.style.display = 'none';
   document.getElementById('scanReport').style.display = 'none';
