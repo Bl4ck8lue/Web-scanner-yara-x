@@ -1,7 +1,10 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
+	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -16,8 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"crypto/md5"
-
 	"github.com/jackc/pgx/v5"
 )
 
@@ -30,12 +31,7 @@ var (
 	concurrency = 4
 	sem         = make(chan struct{}, 4)
 
-	pythonBin   = "python3"
-	scriptPath  = "./scripts/analyze.py"
-	scriptPath1 = "./scripts/registr.py"
-	scriptPath2 = "./scripts/signin.py"
 	rulesPath   = "./rules/"
-	buffName    = ""
 	scanTimeout = 90 * time.Second
 )
 
@@ -579,6 +575,114 @@ func addScanFiles(email string, filename string, size string, date string, threa
 	}
 }
 
+
+// ScanResult содержит результат проверки одного файла правилами YARA.
+type ScanResult struct {
+	File     string   // имя проверяемого файла
+	Threats  []string // список сработавших правил
+}
+
+// yaraScanOutput — структура JSON, которую выводит `yr scan --output-format json`.
+type yaraScanOutput struct {
+	Matches []struct {
+		Rule string `json:"rule"`
+	} `json:"matches"`
+}
+
+// runYaraScan запускает бинарник yr для одного файла на диске и возвращает
+// список сработавших правил. Это Go-замена logic из analyze.py.
+func runYaraScan(ctx context.Context, rulesFile, targetPath string) ([]string, error) {
+	outFile := targetPath + ".yara_out.json"
+	defer os.Remove(outFile)
+
+	// yr scan --disable-warnings --output-format json <rules> <target> > <out>
+	cmd := exec.CommandContext(ctx,
+		"./scripts/yr", "scan",
+		"--disable-warnings",
+		"--output-format", "json",
+		rulesFile, targetPath,
+	)
+
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = io.Discard
+
+	// yr возвращает exit code 1 при обнаружении совпадений — это нормально
+	_ = cmd.Run()
+
+	if buf.Len() == 0 {
+		return nil, nil
+	}
+
+	var result yaraScanOutput
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		return nil, fmt.Errorf("yr output parse error: %w", err)
+	}
+
+	threats := make([]string, 0, len(result.Matches))
+	for _, m := range result.Matches {
+		if m.Rule != "" {
+			threats = append(threats, m.Rule)
+		}
+	}
+	return threats, nil
+}
+
+// scanFileBytes сохраняет байты во временный файл, прогоняет YARA и удаляет
+// временный файл. Используется и для обычных файлов, и для файлов из архива.
+func scanFileBytes(ctx context.Context, rulesFile, name string, data []byte) (ScanResult, error) {
+	tmp, err := os.CreateTemp("", "yara-scan-*-"+filepath.Base(name))
+	if err != nil {
+		return ScanResult{File: name}, fmt.Errorf("cannot create temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return ScanResult{File: name}, fmt.Errorf("cannot write temp file: %w", err)
+	}
+	tmp.Close()
+
+	threats, err := runYaraScan(ctx, rulesFile, tmpPath)
+	return ScanResult{File: name, Threats: threats}, err
+}
+
+// scanArchive распаковывает ZIP-архив в памяти и сканирует каждый вложенный
+// файл. Возвращает срез результатов — по одному на каждый файл в архиве.
+func scanArchive(ctx context.Context, rulesFile string, archiveData []byte) ([]ScanResult, error) {
+	zr, err := zip.NewReader(bytes.NewReader(archiveData), int64(len(archiveData)))
+	if err != nil {
+		return nil, fmt.Errorf("cannot open zip: %w", err)
+	}
+
+	var results []ScanResult
+	for _, f := range zr.File {
+		if f.FileInfo().IsDir() {
+			continue
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			results = append(results, ScanResult{File: f.Name})
+			continue
+		}
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			results = append(results, ScanResult{File: f.Name})
+			continue
+		}
+
+		res, err := scanFileBytes(ctx, rulesFile, f.Name, data)
+		if err != nil {
+			log.Printf("scan error for %s: %v", f.Name, err)
+		}
+		results = append(results, res)
+	}
+	return results, nil
+}
+
 func scanHandler(w http.ResponseWriter, r *http.Request) {
 	rulesPath = "./rules/"
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
@@ -595,46 +699,21 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	filename := filepath.Base(header.Filename)
-
 	rules := r.FormValue("rules")
-	if err != nil {
-		http.Error(w, "missing rules field", http.StatusBadRequest)
-		return
-	}
-
 	size := r.FormValue("size")
-	if err != nil {
-		http.Error(w, "missing rules field", http.StatusBadRequest)
-		return
-	}
 
-	// создать temp файл
-	tmp, err := os.Create(filename)
-	if err != nil {
-		http.Error(w, "internal error creating temp file", http.StatusInternalServerError)
-		return
-	}
-
-	tmpPath := tmp.Name()
-	defer func() {
-		tmp.Close()
-		// _ = os.Remove(tmpPath)
-	}()
-
+	// Читаем файл целиком — нужен для MD5 и возможной распаковки архива
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, "failed to read uploaded file", http.StatusInternalServerError)
 		return
 	}
 
+	// MD5 считается на стороне сервера
 	rawHash := md5.Sum(fileBytes)
 	fileHash := hex.EncodeToString(rawHash[:])
 
-	if _, err := tmp.Write(fileBytes); err != nil {
-		http.Error(w, "failed to save uploaded file", http.StatusInternalServerError)
-		return
-	}
-
+	// Семафор параллелизма
 	select {
 	case sem <- struct{}{}:
 		defer func() { <-sem }()
@@ -643,60 +722,87 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// запустить python скрипт с таймаутом
 	ctx, cancel := context.WithTimeout(context.Background(), scanTimeout)
 	defer cancel()
 
-	rulesPath += rules
+	fullRulesPath := rulesPath + rules
 
-	fmt.Println(rulesPath)
+	// --- Сканирование: ZIP-архив или обычный файл ---
+	var scanResults []ScanResult
+	isZip := strings.HasSuffix(strings.ToLower(filename), ".zip")
 
-	cmd := exec.CommandContext(ctx, pythonBin, scriptPath, rulesPath, tmpPath)
-	out, err := cmd.CombinedOutput()
+	if isZip {
+		// Распаковываем архив в памяти и сканируем каждый файл
+		archiveResults, err := scanArchive(ctx, fullRulesPath, fileBytes)
+		if err != nil {
+			http.Error(w, "archive scan error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		scanResults = archiveResults
+	} else {
+		// Обычный файл — сохраняем на диск и сканируем
+		tmp, err := os.Create(filename)
+		if err != nil {
+			http.Error(w, "internal error creating temp file", http.StatusInternalServerError)
+			return
+		}
+		defer tmp.Close()
+
+		if _, err := tmp.Write(fileBytes); err != nil {
+			http.Error(w, "failed to save uploaded file", http.StatusInternalServerError)
+			return
+		}
+		tmp.Close()
+
+		res, err := runYaraScan(ctx, fullRulesPath, filename)
+		if err != nil {
+			log.Printf("yara scan error: %v", err)
+		}
+		scanResults = []ScanResult{{File: filename, Threats: res}}
+	}
 
 	if ctx.Err() == context.DeadlineExceeded {
 		http.Error(w, "scan timeout", http.StatusGatewayTimeout)
 		return
 	}
 
-	exitCode := 0
-	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
-			exitCode = ee.ExitCode()
-		} else {
-			http.Error(w, "failed to run scanner: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else if cmd.ProcessState != nil {
-		exitCode = cmd.ProcessState.ExitCode()
-	}
-
+	// Подсчитываем суммарное количество угроз по всем файлам
 	threatsCount := 0
-	afterCheck := false
-	for _, line := range strings.Split(string(out), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.ToLower(trimmed) == "check:" {
-			afterCheck = true
-			continue
-		}
-		if afterCheck && trimmed != "" {
-			threatsCount++
+	for _, r := range scanResults {
+		threatsCount += len(r.Threats)
+	}
+	fmt.Printf("Threats found: %d across %d file(s)\n", threatsCount, len(scanResults))
+
+	// Формируем текстовый вывод в формате совместимом с фронтендом:
+	// Check:
+	// RuleName1
+	// RuleName2 (из файла archive/foo.exe)
+	var outputLines []string
+	outputLines = append(outputLines, "Check:")
+	for _, sr := range scanResults {
+		for _, threat := range sr.Threats {
+			if isZip {
+				outputLines = append(outputLines, threat+" ("+sr.File+")")
+			} else {
+				outputLines = append(outputLines, threat)
+			}
 		}
 	}
-
-	fmt.Printf("Threats found: %d\n", threatsCount)
+	outputStr := strings.Join(outputLines, "\n")
 
 	currentTime := time.Now()
 	c, err := r.Cookie("email")
-	addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), threatsCount)
+	if err == nil {
+		addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), threatsCount)
+	}
 
-	// Формируем ответ
 	resp := map[string]any{
-		"exit_code":     exitCode,
-		"output":        string(out),
+		"exit_code":     0,
+		"output":        outputStr,
 		"hash":          fileHash,
 		"threats_count": threatsCount,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
+

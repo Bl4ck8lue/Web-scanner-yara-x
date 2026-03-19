@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cloud Antivirus — Анализ файлов</title>
+  <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div id="homeBtn" class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>CLOUD ANTIVIRUS</h1>
+      <div style="font-size:12px;color:var(--muted)">Облачный анализ загружаемых файлов</div>
+    </div>
+  </div>
+
+  <nav aria-label="Главная навигация">
+    <button id="enterBtn" title="Enter (вход/регистрация)">Enter</button>
+    <button id="replacementText" href="/settings" style="display: none;">Button is hidden!</button>
+    <button id="exitBtn" style="display: none;">Exit</button>
+    <button id="historyBtn">History</button>
+    <button id="settingsBtn">Settings</button>
+    <button id="contactBtn">Contact</button>
+  </nav>
+</header>
+
+<main class="card" role="main" aria-labelledby="mainTitle">
+  <h2 id="mainTitle" class="hero-title">ANALYZING FILES</h2>
+
+  <div class="illu" aria-hidden="false">
+    <div class="cloud" role="img" aria-label="Облако анализа">
+      <div class="file-icon" aria-hidden="true">
+        <div class="corner"></div>
+        <div style="height:6px;width:60%;background:#f1f6ff;border-radius:4px"></div>
+        <div style="height:6px;width:80%;background:#f1f6ff;border-radius:4px"></div>
+        <div style="height:6px;width:40%;background:#f1f6ff;border-radius:4px"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div class="magnifier" aria-hidden="true">
+        <svg width="46" height="46" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#0b2540" stroke-width="1.6">
+          <path d="M21 21l-4.35-4.35" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M13 7a5 5 0 11-4 8.66" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress" aria-hidden="false" aria-label="Прогресс сканирования">
+    <div class="bar" id="progressBar" style="width:0%"></div>
+  </div>
+
+  <div class="status" id="statusText">Your files are waiting to be scanned...</div>
+
+  <div class="controls" role="group" aria-label="Управление">
+    <label class="file-label" for="fileInput" id="fileLabelBtn">Choose file</label>
+    <input type="file" id="fileInput" aria-label="Выбрать файл для сканирования" />
+    <button class="btn" id="scanBtn" disabled>Scan</button>
+    <button class="btn secondary" id="resetBtn">Reset</button>
+  </div>
+
+  <div class="result" id="resultText" aria-live="polite" style="display:none"></div>
+
+  <div id="scanReport" style="display:none; margin-top:28px; border-top:1px solid #e5eaf3; padding-top:22px;">
+    <h3 style="text-align:center; font-size:16px; font-weight:700; color:#0b2540; margin:0 0 16px; letter-spacing:0.3px; text-transform:uppercase;">Результат сканирования</h3>
+    <div id="scanReportInner" style="
+      background:#f8faff;
+      border:1px solid rgba(43,123,228,0.13);
+      border-radius:12px;
+      padding:20px 24px;
+      max-width:680px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:10px 18px;
+      font-size:14px;
+    ">
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">Имя файла</span>
+      <span id="rFileName" style="color:#0f172a; word-break:break-all;"></span>
+
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">Дата сканирования</span>
+      <span id="rDate" style="color:#0f172a;"></span>
+
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">MD5 хэш</span>
+      <span id="rHash" style="color:#0f172a; font-family: 'Courier New', monospace; font-size:13px; word-break:break-all;"></span>
+
+      <span style="font-weight:600; color:#6b7280; white-space:nowrap;">Потенциальные угрозы</span>
+      <span id="rThreats"></span>
+    </div>
+  </div>
+</main>
+
+<!-- В конце body, один раз -->
+<div id="toast" style="
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #333;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 9999;
+  transition: opacity 0.3s;
+"></div>
+
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal" role="document" aria-labelledby="modalTitle">
+    <button class="close-x" id="modalClose" aria-label="Close">&times;</button>
+    <h2 id="modalTitle">Вход / Регистрация</h2>
+    <div class="tabs" role="tablist">
+      <div class="tab active" data-tab="login" role="tab" aria-selected="true">Login</div>
+      <div class="tab" data-tab="register" role="tab" aria-selected="false">Register</div>
+    </div>
+
+    <form id="authForm">
+      <div id="loginFields">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" />
+        </div>
+        <div class="actions">
+          <button id="signBtn" type="submit" class="btn">Sign in</button>
+        </div>
+      </div>
+
+      <div id="registerFields" style="display:none">
+        <div class="form-group">
+          <label for="regName">Full name</label>
+          <input id="regName" type="text" placeholder="Ivan Ivanov" />
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input id="regEmail" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input id="regPassword" type="password" placeholder="Минимум 8 символов" />
+        </div>
+        <div class="form-group">
+          <label for="regPassword2">Confirm password</label>
+          <input id="regPassword2" type="password" placeholder="Повторите пароль" />
+        </div>
+        <div class="actions">
+          <div style="margin-top:10px;color:var(--muted);font-size:13px">
+          1. ФИО вводится через пробел;
+          2. Пароль должен быть не менее 8 символов и должен содержать спец. символы (!,@,#,$,&).
+        </div>
+          <button id="regBtn" class="btn">Create account</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+
+const enterBtn = document.getElementById('enterBtn');
+const exitBtn = document.getElementById('exitBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const homeBtn = document.getElementById('homeBtn');
+  const historyBtn = document.getElementById('historyBtn');
+
+  const replaceTxt = document.getElementById('replacementText');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const modalClose = document.getElementById('modalClose');
+
+  const modalBackdrop1 = document.getElementById('modalBackdrop1');
+  const modalClose1 = document.getElementById('modalClose1');
+
+  const tabs = document.querySelectorAll('.tab');
+  const loginFields = document.getElementById('loginFields');
+
+  const registerFields = document.getElementById('registerFields');
+  const regBtn = document.getElementById('regBtn');
+
+  const authForm = document.getElementById('authForm');
+  const signBtn = document.getElementById('signBtn');
+
+  const fileInput = document.getElementById('fileInput');
+  const fileLabelBtn = document.querySelector('.file-label');
+  const scanBtn = document.getElementById('scanBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusText = document.getElementById('statusText');
+  const progressBar = document.getElementById('progressBar');
+  const resultText = document.getElementById('resultText');
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+
+function updateAuthUI(isAuthenticated, email = '') {
+    if (isAuthenticated) {
+        enterBtn.style.display = 'none';
+        replaceTxt.style.display = 'inline';
+        replaceTxt.textContent = email;
+        exitBtn.style.display = 'inline';
+    } else {
+        enterBtn.style.display = '';
+        replaceTxt.style.display = 'none';
+        exitBtn.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/check-auth')
+        .then(response => response.json())
+        .then(data => {
+            updateAuthUI(data.authenticated, data.email);
+            document.getElementById('regName').value = '';
+            document.getElementById('regEmail').value = '';
+        })
+        .catch(error => {
+            console.error('Auth check failed:', error);
+            updateAuthUI(false);
+        });
+});
+
+exitBtn.addEventListener('click', () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+        logoutUser();
+    }
+});
+
+historyBtn.addEventListener('click', () => {
+  window.location.href = '/history';
+})
+
+homeBtn.addEventListener('click', () => {
+  window.location.href = '/';
+})
+
+replaceTxt.addEventListener('click', () => {
+  document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+    });
+    showToast(replaceTxt.textContent);
+    if (replaceTxt.textContent == "admin@admin.ru") {
+      window.location.href = '/road';
+    } else {
+      showToast("You are not an admin!");
+    }
+})
+
+function logoutUser() {
+    fetch('/logout', {
+        method: 'POST',
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (response.ok) {
+            // Успешный выход - обновляем UI
+            updateAuthUI(false);
+            // Очищаем поля формы входа
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            showToast('Вы успешно вышли из системы');
+        } else {
+            throw new Error('Logout failed');
+        }
+    })
+    .catch(error => {
+        console.error('Logout error:', error);
+        showToast('Ошибка при выходе из системы');
+    });
+}
+
+function showToast(message, duration = 3000) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+
+  setTimeout(() => {
+    // Плавно скрываем
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 300); // ждём завершения transition
+  }, duration);
+}
+
+function openModal(){
+  modalBackdrop.style.display = 'flex';
+  modalBackdrop.setAttribute('aria-hidden','false');
+  setTimeout(()=>document.getElementById('loginEmail').focus(), 5);
+}
+
+function closeModal(){
+  modalBackdrop.style.display = 'none';
+  modalBackdrop.setAttribute('aria-hidden','true');
+}
+
+enterBtn.addEventListener('click', openModal);
+modalClose.addEventListener('click', closeModal);
+
+modalBackdrop.addEventListener('click', (e)=>{
+  if(e.target === modalBackdrop) closeModal();
+});
+
+tabs.forEach(t=>{
+  t.addEventListener('click', ()=>{
+    tabs.forEach(x=>{
+      x.classList.toggle('active', x===t);
+      x.setAttribute('aria-selected', x===t ? 'true' : 'false');
+    });
+    const tab = t.dataset.tab;
+    if(tab === 'login'){
+      loginFields.style.display = '';
+      registerFields.style.display = 'none';
+    } else {
+      loginFields.style.display = 'none';
+      registerFields.style.display = '';
+    }
+  });
+});
+
+authForm.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const activeTab = document.querySelector('.tab.active').dataset.tab;
+  if(activeTab === 'login'){
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPassword').value;
+    if(!email || !pass){ showToast('Заполните поля'); return; }
+    showToast('Успешный вход (демо).');
+    closeModal();
+  } else {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const p1 = document.getElementById('regPassword').value;
+    const p2 = document.getElementById('regPassword2').value;
+    if(!name || !email || !p1 || !p2){ showToast('Заполните поля'); return; }
+    if(p1.length < 8){ showToast('Пароль должен быть минимум 8 символов'); return; }
+    if(p1 !== p2){ showToast('Пароли не совпадают'); return; }
+    closeModal();
+  }
+});
+
+regBtn.addEventListener('click', () => {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const p1 = document.getElementById('regPassword').value;
+  const p2 = document.getElementById('regPassword2').value;
+  if(!name || !email || !p1 || !p2){ showToast('Заполните поля'); return; }
+  if(p1.length < 8){ showToast('Пароль должен быть минимум 8 символов'); return; }
+  if(p1 !== p2){ showToast('Пароли не совпадают'); return; }
+    
+  const form = new FormData();
+  form.append('name', name);
+  form.append('email', email);
+  form.append('p1', p1);
+        
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/reg', true);
+        
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4) {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const res = JSON.parse(xhr.responseText);
+        showToast(res.output);
+        document.getElementById('regName').value = '';
+        document.getElementById('regEmail').value = '';
+        document.getElementById('regPassword').value = '';
+        document.getElementById('regPassword2').value = '';
+      }
+    }
+  };
+  xhr.send(form);
+  closeModal();
+});
+
+signBtn.addEventListener('click', ()=> {
+  const loginEmail = document.getElementById('loginEmail').value.trim();
+  const loginPassword = document.getElementById('loginPassword').value.trim();
+    
+  const form = new FormData();
+  form.append('email', loginEmail);
+  form.append('p1', loginPassword);
+    
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/sign', true);
+    
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState === 4) {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (res.output == 1) {
+            // Успешный вход
+            updateAuthUI(true, loginEmail);
+            closeModal();
+            showToast('Вы успешно вошли в систему');
+          } else {
+            showToast('Ошибка входа: неверные данные');
+          }
+        } catch (e) {
+          console.error('Error parsing response:', e);
+          showToast('Ошибка при обработке ответа сервера');
+        }
+      }
+    }
+  };
+  
+  xhr.send(form);
+});
+
+fileLabelBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', ()=>{
+  if(fileInput.files && fileInput.files.length){
+    const f = fileInput.files[0];
+    fileLabelBtn.textContent = `${f.name} (${Math.round(f.size/1024)} KB)`;
+    scanBtn.disabled = false;
+    statusText.textContent = 'Файл готов. Нажмите Scan для запуска анализа.';
+    resultText.style.display = 'none';
+    progressBar.style.width = '0%';
+  } else {
+    fileLabelBtn.textContent = 'Choose file';
+    scanBtn.disabled = true;
+    statusText.textContent = 'Your files are waiting to be scanned...';
+  }
+});
+
+function formatScanDate(date) {
+  const d = String(date.getDate()).padStart(2,'0');
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const y = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2,'0');
+  const mm = String(date.getMinutes()).padStart(2,'0');
+  const ss = String(date.getSeconds()).padStart(2,'0');
+  return `${d}.${m}.${y} ${hh}:${mm}:${ss}`;
+}
+
+function showScanReport(filename, hash, threatsHtml) {
+  document.getElementById('rFileName').textContent = filename;
+  document.getElementById('rDate').textContent = formatScanDate(new Date());
+  document.getElementById('rHash').textContent = hash;
+  document.getElementById('rThreats').innerHTML = threatsHtml;
+  document.getElementById('scanReport').style.display = '';
+  document.getElementById('scanReport').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Один глобальный интервал для анимации прогресс-бара во время сканирования
+let progressTick = null;
+let progressValue = 0;
+
+function startProgressAnimation() {
+  // Фаза загрузки файла: 0 → 30%
+  progressValue = 0;
+  progressBar.style.width = '0%';
+
+  progressTick = setInterval(() => {
+    // Плавно ползём от текущего значения к 90%, замедляясь по мере приближения
+    const gap = 90 - progressValue;
+    progressValue += gap * 0.04; // экспоненциальное замедление — никогда не достигает 90%
+    progressBar.style.width = progressValue.toFixed(2) + '%';
+  }, 100);
+}
+
+function finishProgressAnimation(onDone) {
+  // Останавливаем имитационный тикер и резко доводим до 100%
+  if (progressTick) {
+    clearInterval(progressTick);
+    progressTick = null;
+  }
+  progressBar.style.width = '100%';
+  // Ждём завершения CSS-перехода (300 мс задан в .bar) и вызываем колбэк
+  setTimeout(onDone, 350);
+}
+
+function resetProgressAnimation() {
+  if (progressTick) {
+    clearInterval(progressTick);
+    progressTick = null;
+  }
+  progressValue = 0;
+  progressBar.style.width = '0%';
+}
+
+let scanning = false;
+scanBtn.addEventListener('click', () => {
+  if (scanning) return;
+  if (!fileInput.files.length) { showToast('Выберите файл'); return; }
+  const file = fileInput.files[0];
+
+  const form = new FormData();
+  form.append('file', file);
+
+  const rules = localStorage.getItem('activeRulesFile');
+  form.append('rules', rules);
+
+  const size = file.size/1024;
+  form.append('size', size);
+
+  scanning = true;
+  scanBtn.disabled = true;
+  resetBtn.disabled = true;
+  resultText.style.display = 'none';
+  document.getElementById('scanReport').style.display = 'none';
+  statusText.textContent = 'Uploading...';
+
+  startProgressAnimation();
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/scan', true);
+
+  xhr.upload.addEventListener('progress', (e) => {
+    if (e.lengthComputable) {
+      // Загрузка файла занимает диапазон 0–40% прогресса
+      const uploadPercent = (e.loaded / e.total) * 40;
+      if (uploadPercent > progressValue) {
+        progressValue = uploadPercent;
+        progressBar.style.width = progressValue.toFixed(2) + '%';
+      }
+      if (e.loaded === e.total) {
+        statusText.textContent = 'Scanning on server...';
+      }
+    }
+  });
+
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState !== 4) return;
+
+    finishProgressAnimation(() => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+
+          // MD5-хэш вычислен на стороне сервера (Go) и передан в поле "hash"
+          const fileHash = res.hash || '—';
+
+          const rawOutput = (res.output || '').trim();
+
+          // Парсим список угроз из вывода скрипта
+          // Формат: "Check:\nRuleName1\nRuleName2\n..."
+          let threats = [];
+          const lines = rawOutput.split('\n').map(l => l.trim()).filter(Boolean);
+          const checkIdx = lines.findIndex(l => l.toLowerCase() === 'check:');
+          if (checkIdx !== -1) {
+            threats = lines.slice(checkIdx + 1).filter(l => l.length > 0);
+          } else if (rawOutput.length > 0 && rawOutput !== '(no output)') {
+            try {
+              const parsed = JSON.parse(rawOutput);
+              if (parsed && parsed.matches) {
+                threats = parsed.matches.map(m => m.rule || String(m));
+              }
+            } catch(e) { /* не JSON */ }
+          }
+
+          // Формируем HTML для угроз
+          let threatsHtml;
+          if (threats.length === 0) {
+            threatsHtml = '<span style="color:var(--success);font-weight:600;">Угроз не обнаружено</span>';
+            resultText.style.color = 'var(--success)';
+            resultText.textContent = 'Файл чист — подозрительных сигнатур не найдено.';
+          } else {
+            threatsHtml = threats.map(t =>
+              `<span style="display:inline-block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;padding:2px 10px;margin:2px 4px 2px 0;font-size:13px;font-weight:600;">${t}</span>`
+            ).join('');
+            resultText.style.color = 'var(--danger)';
+            resultText.textContent = `Обнаружено угроз: ${threats.length} — файл содержит подозрительные сигнатуры.`;
+          }
+
+          resultText.style.display = '';
+          showScanReport(file.name, fileHash, threatsHtml);
+          statusText.textContent = 'Scan complete.';
+        } catch (err) {
+          statusText.textContent = 'Ошибка парсинга ответа от сервера';
+          resultText.style.display = '';
+          resultText.style.color = 'var(--danger)';
+          resultText.textContent = 'Server error: ' + err.message;
+        }
+      } else {
+        statusText.textContent = 'Server error: ' + xhr.status;
+        resultText.style.display = '';
+        resultText.style.color = 'var(--danger)';
+        resultText.textContent = xhr.responseText || ('HTTP ' + xhr.status);
+      }
+
+      scanning = false;
+      resetBtn.disabled = false;
+      scanBtn.disabled = false;
+    });
+  };
+
+  xhr.send(form);
+});
+
+resetBtn.addEventListener('click', ()=>{
+  fileInput.value = '';
+  fileLabelBtn.textContent = 'Choose file';
+  scanBtn.disabled = true;
+  resetProgressAnimation();
+  statusText.textContent = 'Your files are waiting to be scanned...';
+  resultText.style.display = 'none';
+  document.getElementById('scanReport').style.display = 'none';
+});
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && document.activeElement === enterBtn){
+    openModal();
+  }
+  if(e.key === 'Escape'){
+    closeModal();
+  }
+});
+</script>
+
+</body>
+</html>
