@@ -16,7 +16,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -31,11 +33,21 @@ var (
 	concurrency = 4
 	sem         = make(chan struct{}, 4)
 
-	rulesPath   = "./rules/"
-	scanTimeout = 90 * time.Second
+	rulesPath          = "./rules/"
+	scanTimeout        = 90 * time.Second
+	archiveScanTimeout = 10 * time.Minute // отдельный таймаут для архивов
 )
 
+var archiveSem chan struct{}
+
 func main() {
+	workers := runtime.GOMAXPROCS(0) - 1
+	if workers < 1 {
+		workers = 1
+	}
+	archiveSem = make(chan struct{}, workers)
+	log.Printf("archive scan workers: %d", workers)
+
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
 	http.HandleFunc("/", home)
 	http.HandleFunc("/about", aboutHandler)
@@ -65,6 +77,24 @@ func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	const dateFmt = "2006-01-02"
+	var fromTime, toTime time.Time
+	hasFrom, hasTo := false, false
+
+	if fs := r.URL.Query().Get("from"); fs != "" {
+		if t, err := time.Parse(dateFmt, fs); err == nil {
+			fromTime = t
+			hasFrom = true
+		}
+	}
+	if ts := r.URL.Query().Get("to"); ts != "" {
+		if t, err := time.Parse(dateFmt, ts); err == nil {
+			// включаем весь день «to» — берём конец суток
+			toTime = t.Add(24*time.Hour - time.Second)
+			hasTo = true
+		}
+	}
+
 	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
 	if err != nil {
 		http.Error(w, "db connection error", http.StatusInternalServerError)
@@ -72,9 +102,26 @@ func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close(context.Background())
 
-	rows, err := conn.Query(context.Background(),
-		"SELECT id, email, filename, size, date, threats_count FROM scanfiles WHERE email = $1",
-		c.Value)
+	var (
+		query string
+		args  []any
+	)
+	switch {
+	case hasFrom && hasTo:
+		query = "SELECT id, email, filename, size, date, threats_count, COALESCE(threats_list,'') FROM scanfiles WHERE email = $1 AND date >= $2 AND date <= $3 ORDER BY date DESC"
+		args = []any{c.Value, fromTime, toTime}
+	case hasFrom:
+		query = "SELECT id, email, filename, size, date, threats_count, COALESCE(threats_list,'') FROM scanfiles WHERE email = $1 AND date >= $2 ORDER BY date DESC"
+		args = []any{c.Value, fromTime}
+	case hasTo:
+		query = "SELECT id, email, filename, size, date, threats_count, COALESCE(threats_list,'') FROM scanfiles WHERE email = $1 AND date <= $2 ORDER BY date DESC"
+		args = []any{c.Value, toTime}
+	default:
+		query = "SELECT id, email, filename, size, date, threats_count, COALESCE(threats_list,'') FROM scanfiles WHERE email = $1 ORDER BY date DESC"
+		args = []any{c.Value}
+	}
+
+	rows, err := conn.Query(context.Background(), query, args...)
 	if err != nil {
 		http.Error(w, "query error", http.StatusInternalServerError)
 		return
@@ -83,12 +130,22 @@ func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
 
 	var results []map[string]any
 	for rows.Next() {
-		var id, filename, size, threats_count string
+		var id, filename, size, threats_count, threatsList string
 		var date time.Time
 
-		if err := rows.Scan(&id, &c.Value, &filename, &size, &date, &threats_count); err != nil {
+		if err := rows.Scan(&id, &c.Value, &filename, &size, &date, &threats_count, &threatsList); err != nil {
 			http.Error(w, "scan error", http.StatusInternalServerError)
 			return
+		}
+
+		// Разбиваем строку угроз обратно в слайс для передачи фронтенду
+		var threatNames []string
+		if threatsList != "" {
+			for _, t := range strings.Split(threatsList, "|") {
+				if t != "" {
+					threatNames = append(threatNames, t)
+				}
+			}
 		}
 
 		results = append(results, map[string]any{
@@ -96,6 +153,7 @@ func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
 			"size":          size,
 			"date":          date.Format("02-01-2006"),
 			"threats_count": threats_count,
+			"threats_list":  threatNames,
 		})
 	}
 
@@ -562,40 +620,37 @@ func deleteCookieFromDB(r *http.Request) {
 	}
 }
 
-func addScanFiles(email string, filename string, size string, date string, threats int) {
+func addScanFiles(email string, filename string, size string, date string, threats int, threatsList string) {
 	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
 	if err != nil {
 		log.Fatal("Hе удалось подключиться к БД:", err)
 	}
 	defer conn.Close(context.Background())
 
-	_, err = conn.Exec(context.Background(), "insert into scanfiles (email, filename, size, date, threats_count) values ($1, $2, $3, $4, $5)", email, filename, size, date, threats)
+	_, err = conn.Exec(context.Background(),
+		"insert into scanfiles (email, filename, size, date, threats_count, threats_list) values ($1, $2, $3, $4, $5, $6)",
+		email, filename, size, date, threats, threatsList)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-
-// ScanResult содержит результат проверки одного файла правилами YARA.
 type ScanResult struct {
-	File     string   // имя проверяемого файла
-	Threats  []string // список сработавших правил
+	File    string   // имя файла
+	Threats []string // список правил
 }
 
-// yaraScanOutput — структура JSON, которую выводит `yr scan --output-format json`.
 type yaraScanOutput struct {
 	Matches []struct {
 		Rule string `json:"rule"`
 	} `json:"matches"`
 }
 
-// runYaraScan запускает бинарник yr для одного файла на диске и возвращает
-// список сработавших правил. Это Go-замена logic из analyze.py.
 func runYaraScan(ctx context.Context, rulesFile, targetPath string) ([]string, error) {
 	outFile := targetPath + ".yara_out.json"
 	defer os.Remove(outFile)
 
-	// yr scan --disable-warnings --output-format json <rules> <target> > <out>
+	// yr scan --disable-warnings --output-format json <rules> <target> > <out> from analyze.py
 	cmd := exec.CommandContext(ctx,
 		"./scripts/yr", "scan",
 		"--disable-warnings",
@@ -607,7 +662,6 @@ func runYaraScan(ctx context.Context, rulesFile, targetPath string) ([]string, e
 	cmd.Stdout = &buf
 	cmd.Stderr = io.Discard
 
-	// yr возвращает exit code 1 при обнаружении совпадений — это нормально
 	_ = cmd.Run()
 
 	if buf.Len() == 0 {
@@ -628,8 +682,6 @@ func runYaraScan(ctx context.Context, rulesFile, targetPath string) ([]string, e
 	return threats, nil
 }
 
-// scanFileBytes сохраняет байты во временный файл, прогоняет YARA и удаляет
-// временный файл. Используется и для обычных файлов, и для файлов из архива.
 func scanFileBytes(ctx context.Context, rulesFile, name string, data []byte) (ScanResult, error) {
 	tmp, err := os.CreateTemp("", "yara-scan-*-"+filepath.Base(name))
 	if err != nil {
@@ -648,38 +700,72 @@ func scanFileBytes(ctx context.Context, rulesFile, name string, data []byte) (Sc
 	return ScanResult{File: name, Threats: threats}, err
 }
 
-// scanArchive распаковывает ZIP-архив в памяти и сканирует каждый вложенный
-// файл. Возвращает срез результатов — по одному на каждый файл в архиве.
+type archiveEntry struct {
+	name string
+	data []byte
+}
+
 func scanArchive(ctx context.Context, rulesFile string, archiveData []byte) ([]ScanResult, error) {
 	zr, err := zip.NewReader(bytes.NewReader(archiveData), int64(len(archiveData)))
 	if err != nil {
 		return nil, fmt.Errorf("cannot open zip: %w", err)
 	}
 
-	var results []ScanResult
+	var entries []archiveEntry
 	for _, f := range zr.File {
 		if f.FileInfo().IsDir() {
 			continue
 		}
-
 		rc, err := f.Open()
 		if err != nil {
-			results = append(results, ScanResult{File: f.Name})
+			entries = append(entries, archiveEntry{name: f.Name, data: nil})
 			continue
 		}
 		data, err := io.ReadAll(rc)
 		rc.Close()
 		if err != nil {
-			results = append(results, ScanResult{File: f.Name})
+			entries = append(entries, archiveEntry{name: f.Name, data: nil})
 			continue
 		}
-
-		res, err := scanFileBytes(ctx, rulesFile, f.Name, data)
-		if err != nil {
-			log.Printf("scan error for %s: %v", f.Name, err)
-		}
-		results = append(results, res)
+		entries = append(entries, archiveEntry{name: f.Name, data: data})
 	}
+
+	results := make([]ScanResult, len(entries))
+
+	type job struct{ idx int }
+	jobs := make(chan job, len(entries))
+	for i := range entries {
+		jobs <- job{i}
+	}
+	close(jobs)
+
+	var wg sync.WaitGroup
+	for j := range jobs {
+		j := j
+		e := entries[j.idx]
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if e.data == nil {
+				results[j.idx] = ScanResult{File: e.name}
+				return
+			}
+			select {
+			case archiveSem <- struct{}{}:
+				defer func() { <-archiveSem }()
+			case <-ctx.Done():
+				results[j.idx] = ScanResult{File: e.name}
+				return
+			}
+			res, err := scanFileBytes(ctx, rulesFile, e.name, e.data)
+			if err != nil {
+				log.Printf("scan error for %s: %v", e.name, err)
+			}
+			results[j.idx] = res
+		}()
+	}
+	wg.Wait()
+
 	return results, nil
 }
 
@@ -702,18 +788,15 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	rules := r.FormValue("rules")
 	size := r.FormValue("size")
 
-	// Читаем файл целиком — нужен для MD5 и возможной распаковки архива
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, "failed to read uploaded file", http.StatusInternalServerError)
 		return
 	}
 
-	// MD5 считается на стороне сервера
 	rawHash := md5.Sum(fileBytes)
 	fileHash := hex.EncodeToString(rawHash[:])
 
-	// Семафор параллелизма
 	select {
 	case sem <- struct{}{}:
 		defer func() { <-sem }()
@@ -722,17 +805,19 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), scanTimeout)
+	isZip := strings.HasSuffix(strings.ToLower(filename), ".zip")
+	timeout := scanTimeout
+	if isZip {
+		timeout = archiveScanTimeout
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	fullRulesPath := rulesPath + rules
 
-	// --- Сканирование: ZIP-архив или обычный файл ---
 	var scanResults []ScanResult
-	isZip := strings.HasSuffix(strings.ToLower(filename), ".zip")
 
 	if isZip {
-		// Распаковываем архив в памяти и сканируем каждый файл
 		archiveResults, err := scanArchive(ctx, fullRulesPath, fileBytes)
 		if err != nil {
 			http.Error(w, "archive scan error: "+err.Error(), http.StatusInternalServerError)
@@ -740,7 +825,6 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		scanResults = archiveResults
 	} else {
-		// Обычный файл — сохраняем на диск и сканируем
 		tmp, err := os.Create(filename)
 		if err != nil {
 			http.Error(w, "internal error creating temp file", http.StatusInternalServerError)
@@ -766,17 +850,12 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Подсчитываем суммарное количество угроз по всем файлам
 	threatsCount := 0
 	for _, r := range scanResults {
 		threatsCount += len(r.Threats)
 	}
 	fmt.Printf("Threats found: %d across %d file(s)\n", threatsCount, len(scanResults))
 
-	// Формируем текстовый вывод в формате совместимом с фронтендом:
-	// Check:
-	// RuleName1
-	// RuleName2 (из файла archive/foo.exe)
 	var outputLines []string
 	outputLines = append(outputLines, "Check:")
 	for _, sr := range scanResults {
@@ -790,10 +869,22 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	outputStr := strings.Join(outputLines, "\n")
 
+	var threatNames []string
+	for _, sr := range scanResults {
+		for _, threat := range sr.Threats {
+			if isZip {
+				threatNames = append(threatNames, threat+" ("+sr.File+")")
+			} else {
+				threatNames = append(threatNames, threat)
+			}
+		}
+	}
+	threatsList := strings.Join(threatNames, "|")
+
 	currentTime := time.Now()
 	c, err := r.Cookie("email")
 	if err == nil {
-		addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), threatsCount)
+		addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), threatsCount, threatsList)
 	}
 
 	resp := map[string]any{
@@ -805,4 +896,3 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
-
