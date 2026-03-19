@@ -34,175 +34,223 @@
 <main class="card" role="main" aria-labelledby="mainTitle">
   <h2 id="mainTitle" class="hero-title">History Page</h2>
   
-  <div class="illu">
-    <button class="btn" id="selectBtn">Check scaned files</button>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label for="dateFrom" style="font-size:14px;font-weight:600;color:var(--muted);">С</label>
+      <input type="date" id="dateFrom" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;color:#0f172a;background:#fff;cursor:pointer;" />
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label for="dateTo" style="font-size:14px;font-weight:600;color:var(--muted);">По</label>
+      <input type="date" id="dateTo" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;color:#0f172a;background:#fff;cursor:pointer;" />
+    </div>
+    <button class="btn" id="selectBtn" style="white-space:nowrap;">Показать</button>
   </div>
 
-  <div class="illu">
-    <table class="table" id="table">
-        <thead>
-            <!--Заголовки-->
-            <tr>
-			    <th>Filename</th>
-			    <th>Size (KB)</th>
-			    <th>Date</th>
-			    <th>Threat-Counts</th>
-		    </tr>
-	    </thead>
-        <!--Строки таблицы-->
-	    <tbody>
-	    </tbody>
+  <div id="tableWrap">
+    <table class="table" id="table" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:center;padding:10px 14px;border-bottom:2px solid #e5eaf3;font-size:13px;color:var(--muted);font-weight:600;">Filename</th>
+          <th style="text-align:center;padding:10px 14px;border-bottom:2px solid #e5eaf3;font-size:13px;color:var(--muted);font-weight:600;">Size (KB)</th>
+          <th style="text-align:center;padding:10px 14px;border-bottom:2px solid #e5eaf3;font-size:13px;color:var(--muted);font-weight:600;">Date</th>
+          <th style="text-align:center;padding:10px 14px;border-bottom:2px solid #e5eaf3;font-size:13px;color:var(--muted);font-weight:600;">Threat-Counts</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
     </table>
+  </div>
+
+  <div id="tableEmpty" style="display:none;text-align:center;padding:32px 20px;">
+    <div style="font-size:15px;font-weight:600;color:#0b2540;margin-bottom:6px;">За данный период ничего не было просканировано</div>
+    <div style="font-size:13px;color:var(--muted);">Попробуйте выбрать другой диапазон дат</div>
+  </div>
+
+  <div id="threatsModal" style="
+    display:none; position:fixed; inset:0;
+    background:rgba(2,6,23,0.45);
+    z-index:1000; align-items:center; justify-content:center; padding:20px;
+  ">
+    <div style="
+      background:#fff; border-radius:14px; padding:28px 28px 24px;
+      max-width:480px; width:100%; box-shadow:0 20px 60px rgba(2,6,23,0.35);
+      position:relative; max-height:80vh; display:flex; flex-direction:column;
+    ">
+      <button id="threatsModalClose" style="
+        position:absolute; top:14px; right:16px;
+        background:none; border:none; font-size:22px; cursor:pointer; color:var(--muted); line-height:1;
+      " aria-label="Закрыть">&times;</button>
+      <h3 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#0b2540;">Обнаруженные угрозы</h3>
+      <div id="threatsModalFile" style="font-size:13px;color:var(--muted);margin-bottom:14px;word-break:break-all;"></div>
+      <div id="threatsModalList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
   </div>
 </main>
 
 <script>
-  const enterBtn = document.getElementById('enterBtn');
-  const exitBtn = document.getElementById('exitBtn');
-  const settingsBtn = document.getElementById('settingsBtn');
-  const homeBtn = document.getElementById('homeBtn');
-  const chalBtn = document.getElementById('chalBtn');
-  const chooseBtn = document.getElementById('chooseBtn');
-  const loadBtn = document.getElementById('loadBtn');
+  const enterBtn   = document.getElementById('enterBtn');
+  const exitBtn    = document.getElementById('exitBtn');
+  const homeBtn    = document.getElementById('homeBtn');
   const historyBtn = document.getElementById('historyBtn');
-  const selectBtn = document.getElementById('selectBtn');
-
+  const selectBtn  = document.getElementById('selectBtn');
   const replaceTxt = document.getElementById('replacementText');
-  const modalBackdrop = document.getElementById('modalBackdrop');
-  const modalClose = document.getElementById('modalClose');
 
-  const modalBackdrop1 = document.getElementById('modalBackdrop1');
-  const modalClose1 = document.getElementById('modalClose1');
+  const threatsModal      = document.getElementById('threatsModal');
+  const threatsModalClose = document.getElementById('threatsModalClose');
+  const threatsModalFile  = document.getElementById('threatsModalFile');
+  const threatsModalList  = document.getElementById('threatsModalList');
 
-  const tabs = document.querySelectorAll('.tab');
-  const loginFields = document.getElementById('loginFields');
-
-  const registerFields = document.getElementById('registerFields');
-  const regBtn = document.getElementById('regBtn');
-
-  const authForm = document.getElementById('authForm');
-  const signBtn = document.getElementById('signBtn');
-
-  const fileInput = document.getElementById('fileInput');
-  const fileLabelBtn = document.querySelector('.file-label');
-  const scanBtn = document.getElementById('scanBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const statusText = document.getElementById('statusText');
-  const progressBar = document.getElementById('progressBar');
-  const resultText = document.getElementById('resultText');
-
-document.addEventListener('DOMContentLoaded', function() {
-    fetch('/api/check-auth')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.authenticated) {
-                enterBtn.style.display = 'none';
-                replaceTxt.style.display = 'inline';
-                replaceTxt.textContent = data.email;
-            } else {
-                enterBtn.style.display = '';
-                replaceTxt.style.display = 'none';
-            }
-        })
-        .catch(error => {
-            console.error('Error checking auth status:', error);
-            enterBtn.style.display = '';
-            replaceTxt.style.display = 'none';
-        });
-});
-
-selectBtn.addEventListener('click', () => {
-    var table = document.getElementById('table').getElementsByTagName('tbody')[0];
-    var newRow = table.insertRow(table.rows.length);
-    var cell1 = newRow.insertCell(0);
-    var cell2 = newRow.insertCell(1);
-    var cell3 = newRow.insertCell(2);
-    var cell4 = newRow.insertCell(3);
-    var cell5 = newRow.insertCell(4);
-    var cell6 = newRow.insertCell(5);
-
-    fetch('/api/scanfiles')
-        .then(r => {
-            if (!r.ok) throw new Error('Failed to fetch');
-            return r.json();
-        })
-        .then(files => {
-            table.innerHTML = '';
-
-            if (!files || files.length === 0) {
-                table.innerHTML = '<tr><td colspan="5">Нет данных</td></tr>';
-                return;
-            }
-
-            files.forEach(file => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${file.filename}</td>
-                    <td>${file.size}</td>
-                    <td>${file.date}</td>
-                    <td>${file.threats_count}</td>
-                `;
-                table.appendChild(tr);
-            });
-        })
-        .catch(err => console.error('Error loading scan files:', err));
-})
-
-historyBtn.addEventListener('click', () => {
-  window.location.href = '/history';
-})
-
-
-
-function updateAuthUI(isAuthenticated, email = '') {
-    if (isAuthenticated) {
-        enterBtn.style.display = 'none';
-        replaceTxt.style.display = 'inline';
-        replaceTxt.textContent = email;
-        exitBtn.style.display = 'inline';
-    } else {
-        enterBtn.style.display = '';
-        replaceTxt.style.display = 'none';
-        exitBtn.style.display = 'none';
-    }
-}
-
-
-exitBtn.addEventListener('click', () => {
-    if (confirm('Вы уверены, что хотите выйти?')) {
-        logoutUser();
-    }
-});
-
-homeBtn.addEventListener('click', () => {
-  window.location.href = '/';
-})
-
-
-function logoutUser() {
-    fetch('/logout', {
-        method: 'POST',
-        credentials: 'same-origin'
-    })
-    .then(response => {
-        if (response.ok) {
-            updateAuthUI(false);
-            alert('Вы успешно вышли из системы');
-            window.location.href = '/';
-        } else {
-            throw new Error('Logout failed');
-        }
-    })
-    .catch(error => {
-        console.error('Logout error:', error);
-        alert('Ошибка при выходе из системы');
+  function openThreatsModal(filename, threats) {
+    threatsModalFile.textContent = 'Файл: ' + filename;
+    threatsModalList.innerHTML = '';
+    threats.forEach(t => {
+      const el = document.createElement('div');
+      el.style.cssText = 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;';
+      el.textContent = t;
+      threatsModalList.appendChild(el);
     });
-}
+    threatsModal.style.display = 'flex';
+  }
+
+  threatsModalClose.addEventListener('click', () => { threatsModal.style.display = 'none'; });
+  threatsModal.addEventListener('click', e => {
+    if (e.target === threatsModal) threatsModal.style.display = 'none';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') threatsModal.style.display = 'none';
+  });
+
+  function toInputDate(d) {
+    const y  = d.getFullYear();
+    const m  = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  }
+
+  const today = new Date();
+  const twoDaysAgo = new Date(today);
+  twoDaysAgo.setDate(today.getDate() - 2);
+
+  document.getElementById('dateTo').value   = toInputDate(today);
+  document.getElementById('dateFrom').value = toInputDate(twoDaysAgo);
+
+  function loadScanFiles(from, to) {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to)   params.set('to', to);
+
+    fetch('/api/scanfiles?' + params.toString())
+      .then(r => {
+        if (r.status === 401) { window.location.href = '/'; return null; }
+        if (!r.ok) throw new Error('Failed to fetch: ' + r.status);
+        return r.json();
+      })
+      .then(files => {
+        if (!files) return;
+
+        const tbody    = document.querySelector('#table tbody');
+        const tableWrap = document.getElementById('tableWrap');
+        const empty    = document.getElementById('tableEmpty');
+        tbody.innerHTML = '';
+
+        if (!files || files.length === 0) {
+          tableWrap.style.display = 'none';
+          empty.style.display = '';
+          return;
+        }
+
+        tableWrap.style.display = '';
+        empty.style.display = 'none';
+
+        files.forEach(file => {
+          const tr = document.createElement('tr');
+          tr.style.borderBottom = '1px solid #f1f5f9';
+
+          const threats = parseInt(file.threats_count, 10) || 0;
+          const threatsList = Array.isArray(file.threats_list) ? file.threats_list : [];
+
+          let threatCell;
+          if (threats === 0) {
+            threatCell = '<span style="color:var(--success);font-weight:600;">0</span>';
+          } else {
+            threatCell = `<span
+              class="threat-badge"
+              data-filename="${file.filename.replace(/"/g, '&quot;')}"
+              data-threats='${JSON.stringify(threatsList)}'
+              style="display:inline-block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;
+                     border-radius:6px;padding:2px 10px;font-weight:600;font-size:13px;
+                     cursor:pointer;transition:background 0.15s;"
+              title="Нажмите, чтобы увидеть список угроз"
+            >${threats}</span>`;
+          }
+
+          tr.innerHTML = `
+            <td style="padding:10px 14px;font-size:14px;text-align:center;">${file.filename}</td>
+            <td style="padding:10px 14px;font-size:14px;text-align:center;">${parseFloat(file.size).toFixed(1)}</td>
+            <td style="padding:10px 14px;font-size:14px;text-align:center;">${file.date}</td>
+            <td style="padding:10px 14px;text-align:center;">${threatCell}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll('.threat-badge').forEach(badge => {
+          badge.addEventListener('mouseenter', () => { badge.style.background = '#fee2e2'; });
+          badge.addEventListener('mouseleave', () => { badge.style.background = '#fef2f2'; });
+          badge.addEventListener('click', () => {
+            const filename = badge.dataset.filename;
+            let tList = [];
+            try { tList = JSON.parse(badge.dataset.threats); } catch(e) {}
+            if (tList.length === 0) tList = ['Список угроз недоступен (старая запись)'];
+            openThreatsModal(filename, tList);
+          });
+        });
+      })
+      .catch(err => {
+        console.error('Error loading scan files:', err);
+        document.getElementById('tableWrap').style.display = 'none';
+        document.getElementById('tableEmpty').style.display = '';
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/check-auth')
+      .then(r => r.json())
+      .then(data => {
+        if (data.authenticated) {
+          replaceTxt.style.display = 'inline';
+          replaceTxt.textContent   = data.email;
+          enterBtn.style.display   = 'none';
+          exitBtn.style.display    = 'inline';
+        } else {
+          replaceTxt.style.display = 'none';
+          enterBtn.style.display   = '';
+          exitBtn.style.display    = 'none';
+        }
+      })
+      .catch(() => {});
+
+    loadScanFiles(
+      document.getElementById('dateFrom').value,
+      document.getElementById('dateTo').value
+    );
+  });
+
+  selectBtn.addEventListener('click', () => {
+    loadScanFiles(
+      document.getElementById('dateFrom').value,
+      document.getElementById('dateTo').value
+    );
+  });
+
+  homeBtn.addEventListener('click',    () => { window.location.href = '/'; });
+  historyBtn.addEventListener('click', () => { window.location.href = '/history'; });
+
+  exitBtn.addEventListener('click', () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+      fetch('/logout', { method: 'POST', credentials: 'same-origin' })
+        .then(r => { if (r.ok) window.location.href = '/'; })
+        .catch(() => {});
+    }
+  });
 </script>
 
 </body>
