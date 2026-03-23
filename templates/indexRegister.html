@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cloud Antivirus — Регистрация</title>
+  <link rel="stylesheet" href="/static/index.css">
+  <style>
+    /* ── Registration page specific styles ── */
+    .reg-wrap {
+      min-height: calc(100vh - 120px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .reg-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 30px rgba(16,24,40,0.08);
+      padding: 40px 44px;
+      width: 100%;
+      max-width: 460px;
+    }
+
+    .reg-card .brand-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .reg-card .brand-mini .logo {
+      width: 38px; height: 38px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--primary), #74b0ff);
+      box-shadow: 0 4px 12px rgba(43,123,228,0.22);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .reg-card .brand-mini .logo svg {
+      width: 18px; height: 18px; fill: #fff;
+    }
+
+    .reg-card .brand-mini span {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0b2540;
+      letter-spacing: 0.2px;
+    }
+
+    .reg-card h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0b2540;
+      margin: 0 0 4px;
+    }
+
+    .reg-card .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 28px;
+    }
+
+    .reg-card .subtitle a {
+      color: var(--primary);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .field input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 9px;
+      font-size: 14px;
+      color: #0f172a;
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(43,123,228,0.14);
+    }
+
+    .field input.invalid {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+    }
+
+    .field .hint {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    .rules-box {
+      background: #f8faff;
+      border: 1px solid rgba(43,123,228,0.13);
+      border-radius: 9px;
+      padding: 12px 14px;
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+
+    .rules-box li { margin-left: 14px; }
+
+    .error-box {
+      display: none;
+      padding: 10px 14px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 9px;
+      color: var(--danger);
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .success-box {
+      display: none;
+      padding: 14px 16px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 9px;
+      color: #166534;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(43,123,228,0.2);
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .submit-btn:hover { background: var(--accent); }
+    .submit-btn:active { transform: scale(0.985); }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .strength-bar {
+      height: 4px;
+      border-radius: 4px;
+      background: #e5e7eb;
+      margin-top: 7px;
+      overflow: hidden;
+    }
+    .strength-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.25s, background 0.25s;
+    }
+    .strength-label {
+      font-size: 11.5px;
+      margin-top: 4px;
+      color: var(--muted);
+      min-height: 16px;
+    }
+
+    @media (max-width: 500px) {
+      .reg-card { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div id="homeBtn" class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>CLOUD ANTIVIRUS</h1>
+      <div style="font-size:12px;color:var(--muted)">Облачный анализ загружаемых файлов</div>
+    </div>
+  </div>
+  <nav aria-label="Главная навигация">
+    <button id="homeNavBtn">Home</button>
+    <button id="historyBtn">History</button>
+  </nav>
+</header>
+
+<div class="reg-wrap">
+  <div class="reg-card">
+
+    <!-- Лого-бренд внутри карточки -->
+    <div class="brand-mini">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2a5 5 0 00-4.9 4.07A4.5 4.5 0 005 11.5 4.5 4.5 0 009.5 16h7a3.5 3.5 0 00.5-6.99A5 5 0 0012 2z"/>
+        </svg>
+      </div>
+      <span>CLOUD ANTIVIRUS</span>
+    </div>
+
+    <h1>Создать аккаунт</h1>
+    <p class="subtitle">
+      Уже есть аккаунт? <a href="/">Войти</a>
+    </p>
+
+    <!-- Сообщение об ошибке -->
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- Сообщение об успехе -->
+    <div class="success-box" id="successBox" style="display:none; text-align:center; padding:28px 20px; font-size:16px; line-height:1.7;">
+      ✅ Пользователь создан.<br>
+      Можете вернуться на <a href="/" style="color:#166534;font-weight:700;text-decoration:underline;">главную страницу</a>.
+    </div>
+
+    <form id="regForm" novalidate>
+
+      <div class="field">
+        <label for="regName">Полное имя <span style="color:var(--danger)">*</span></label>
+        <input id="regName" type="text" placeholder="Иван Иванов Иванович" autocomplete="name" />
+        <div class="hint">Введите ФИО через пробел</div>
+      </div>
+
+      <div class="field">
+        <label for="regEmail">Email <span style="color:var(--danger)">*</span></label>
+        <input id="regEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label for="regPassword">Пароль <span style="color:var(--danger)">*</span></label>
+        <input id="regPassword" type="password" placeholder="Минимум 8 символов" autocomplete="new-password" />
+        <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
+        <div class="strength-label" id="strengthLabel"></div>
+      </div>
+
+      <div class="field">
+        <label for="regPassword2">Повторите пароль <span style="color:var(--danger)">*</span></label>
+        <input id="regPassword2" type="password" placeholder="Повторите пароль" autocomplete="new-password" />
+      </div>
+
+      <div class="rules-box">
+        <strong>Требования к паролю:</strong>
+        <ul>
+          <li>Минимум 8 символов</li>
+          <li>Хотя бы один специальный символ: <code>! @ # $ &amp;</code></li>
+        </ul>
+      </div>
+
+      <button type="button" class="submit-btn" id="submitBtn">Создать аккаунт</button>
+    </form>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="
+  display:none; position:fixed; bottom:24px; right:24px;
+  background:#333; color:#fff; padding:12px 20px;
+  border-radius:8px; font-size:14px; z-index:9999; transition:opacity 0.3s;
+"></div>
+
+<script>
+// ── Navigation ─────────────────────────────────────────────────────────────
+document.getElementById('homeBtn').addEventListener('click',    () => window.location.href = '/');
+document.getElementById('homeNavBtn').addEventListener('click', () => window.location.href = '/');
+document.getElementById('historyBtn').addEventListener('click', () => window.location.href = '/history');
+
+// ── Password strength ──────────────────────────────────────────────────────
+const SPECIAL = /[!@#$&]/;
+const MIN_LEN = 8;
+
+function checkStrength(pwd) {
+  if (!pwd) return { score: 0, label: '', color: '' };
+  let score = 0;
+  if (pwd.length >= MIN_LEN)    score++;
+  if (pwd.length >= 12)         score++;
+  if (/[A-Z]/.test(pwd))        score++;
+  if (/[0-9]/.test(pwd))        score++;
+  if (SPECIAL.test(pwd))        score++;
+
+  const levels = [
+    { label: '',          color: '' },
+    { label: 'Слабый',    color: '#ef4444' },
+    { label: 'Слабый',    color: '#ef4444' },
+    { label: 'Средний',   color: '#f59e0b' },
+    { label: 'Хороший',   color: '#22c55e' },
+    { label: 'Отличный',  color: '#16a34a' },
+  ];
+  return { score, ...levels[score] };
+}
+
+document.getElementById('regPassword').addEventListener('input', function () {
+  const { score, label, color } = checkStrength(this.value);
+  const fill  = document.getElementById('strengthFill');
+  const lbl   = document.getElementById('strengthLabel');
+  fill.style.width      = (score * 20) + '%';
+  fill.style.background = color;
+  lbl.textContent       = label;
+  lbl.style.color       = color;
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(message, duration = 3000) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.style.display = 'block';
+  toast.style.opacity = '1';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.style.display = 'none', 300);
+  }, duration);
+}
+
+// ── Validation ─────────────────────────────────────────────────────────────
+function showError(message) {
+  const box = document.getElementById('errorBox');
+  box.textContent = message;
+  box.style.display = '';
+  document.getElementById('successBox').style.display = 'none';
+}
+
+function clearError() {
+  document.getElementById('errorBox').style.display = 'none';
+}
+
+function markInvalid(id) {
+  document.getElementById(id).classList.add('invalid');
+}
+function clearInvalid(id) {
+  document.getElementById(id).classList.remove('invalid');
+}
+
+function validate() {
+  clearError();
+  ['regName','regEmail','regPassword','regPassword2'].forEach(clearInvalid);
+
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const p1    = document.getElementById('regPassword').value;
+  const p2    = document.getElementById('regPassword2').value;
+
+  if (!name) {
+    markInvalid('regName');
+    showError('Введите полное имя');
+    return null;
+  }
+  if (name.split(/\s+/).filter(Boolean).length < 2) {
+    markInvalid('regName');
+    showError('Введите ФИО через пробел (минимум имя и фамилия)');
+    return null;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    markInvalid('regEmail');
+    showError('Введите корректный email');
+    return null;
+  }
+  if (p1.length < MIN_LEN) {
+    markInvalid('regPassword');
+    showError(`Пароль должен содержать минимум ${MIN_LEN} символов`);
+    return null;
+  }
+  if (!SPECIAL.test(p1)) {
+    markInvalid('regPassword');
+    showError('Пароль должен содержать хотя бы один спец. символ: ! @ # $ &');
+    return null;
+  }
+  if (p1 !== p2) {
+    markInvalid('regPassword2');
+    showError('Пароли не совпадают');
+    return null;
+  }
+
+  return { name, email, p1 };
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+function submitForm() {
+  const data = validate();
+  if (!data) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Создание аккаунта…';
+
+  const form = new FormData();
+  form.append('name',  data.name);
+  form.append('email', data.email);
+  form.append('p1',    data.p1);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/reg', true);
+  xhr.onreadystatechange = () => {
+    if (xhr.readyState !== 4) return;
+
+    btn.disabled = false;
+    btn.textContent = 'Создать аккаунт';
+
+    try {
+      const res = JSON.parse(xhr.responseText);
+      if (xhr.status === 200 && res.exit_code === '200') {
+        // Успех — скрываем форму, показываем сообщение по центру
+        document.getElementById('regForm').style.display = 'none';
+        document.getElementById('errorBox').style.display = 'none';
+        const box = document.getElementById('successBox');
+        box.style.display = 'block';
+        box.style.margin = '0 auto';
+      } else if (xhr.status === 409) {
+        markInvalid('regEmail');
+        showError(res.output || 'Пользователь с таким email уже существует');
+      } else {
+        showError(res.output || 'Ошибка при регистрации. Попробуйте позже.');
+      }
+    } catch {
+      showError('Ошибка обработки ответа сервера');
+    }
+  };
+  xhr.send(form);
+}
+
+document.getElementById('submitBtn').addEventListener('click', submitForm);
+</script>
+
+</body>
+</html>
