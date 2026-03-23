@@ -5,6 +5,32 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Cloud Antivirus — Анализ файлов</title>
   <link rel="stylesheet" href="/static/index.css">
+  <style>
+    /* Модальное окно угроз — адаптивная ширина под путь к файлу */
+    #threatsModalInner {
+      /* Растягивается под содержимое, но не уже 340px и не шире 90vw */
+      width: max-content;
+      min-width: 340px;
+      max-width: min(90vw, 720px);
+      box-sizing: border-box;
+    }
+    #threatsModalFile {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      /* Длинные пути переносятся, не разрывая слова посередине кириллицы */
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+    #threatsModalList {
+      overflow-y: auto;
+      max-height: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+  </style>
 </head>
 <body>
 
@@ -61,8 +87,9 @@
   </div>
 
   <div id="tableEmpty" style="display:none;text-align:center;padding:32px 20px;">
-    <div style="font-size:15px;font-weight:600;color:#0b2540;margin-bottom:6px;">За данный период ничего не было просканировано</div>
-    <div style="font-size:13px;color:var(--muted);">Попробуйте выбрать другой диапазон дат</div>
+    <div style="font-size:36px;margin-bottom:12px;" id="tableEmptyIcon">🔍</div>
+    <div style="font-size:15px;font-weight:600;color:#0b2540;margin-bottom:6px;" id="tableEmptyTitle"></div>
+    <div style="font-size:13px;color:var(--muted);" id="tableEmptyHint"></div>
   </div>
 
   <div id="threatsModal" style="
@@ -70,18 +97,18 @@
     background:rgba(2,6,23,0.45);
     z-index:1000; align-items:center; justify-content:center; padding:20px;
   ">
-    <div style="
+    <div id="threatsModalInner" style="
       background:#fff; border-radius:14px; padding:28px 28px 24px;
-      max-width:480px; width:100%; box-shadow:0 20px 60px rgba(2,6,23,0.35);
-      position:relative; max-height:80vh; display:flex; flex-direction:column;
+      box-shadow:0 20px 60px rgba(2,6,23,0.35);
+      position:relative; display:flex; flex-direction:column;
     ">
       <button id="threatsModalClose" style="
         position:absolute; top:14px; right:16px;
         background:none; border:none; font-size:22px; cursor:pointer; color:var(--muted); line-height:1;
       " aria-label="Закрыть">&times;</button>
       <h3 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#0b2540;">Обнаруженные угрозы</h3>
-      <div id="threatsModalFile" style="font-size:13px;color:var(--muted);margin-bottom:14px;word-break:break-all;"></div>
-      <div id="threatsModalList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;"></div>
+      <div id="threatsModalFile"></div>
+      <div id="threatsModalList"></div>
     </div>
   </div>
 </main>
@@ -133,6 +160,29 @@
   document.getElementById('dateTo').value   = toInputDate(today);
   document.getElementById('dateFrom').value = toInputDate(twoDaysAgo);
 
+  // Показывает блок «нет данных» используя message/hint от сервера.
+  // Иконка подбирается по status, полученному от Go-хендлера.
+  function showEmptyState(status, message, hint) {
+    const wrap  = document.getElementById('tableWrap');
+    const empty = document.getElementById('tableEmpty');
+    const icon  = document.getElementById('tableEmptyIcon');
+    const title = document.getElementById('tableEmptyTitle');
+    const hintEl = document.getElementById('tableEmptyHint');
+
+    wrap.style.display  = 'none';
+    empty.style.display = '';
+
+    const icons = {
+      'future':      '📅',
+      'no_data_yet': '🕰️',
+      'empty':       '🔍',
+      'error':       '⚠️',
+    };
+    icon.textContent  = icons[status] || '🔍';
+    title.textContent = message || 'Нет данных';
+    hintEl.textContent = hint  || '';
+  }
+
   function loadScanFiles(from, to) {
     const params = new URLSearchParams();
     if (from) params.set('from', from);
@@ -141,27 +191,27 @@
     fetch('/api/scanfiles?' + params.toString())
       .then(r => {
         if (r.status === 401) { window.location.href = '/'; return null; }
-        if (!r.ok) throw new Error('Failed to fetch: ' + r.status);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
-      .then(files => {
-        if (!files) return;
+      .then(resp => {
+        if (!resp) return;
+
+        // Сервер всегда возвращает { status, message, hint, files, total_scans, total_threats }
+        // Анализ периода выполнен на стороне Go — клиент только отображает результат.
+        if (resp.status !== 'ok') {
+          showEmptyState(resp.status, resp.message, resp.hint);
+          return;
+        }
 
         const tbody    = document.querySelector('#table tbody');
         const tableWrap = document.getElementById('tableWrap');
         const empty    = document.getElementById('tableEmpty');
         tbody.innerHTML = '';
-
-        if (!files || files.length === 0) {
-          tableWrap.style.display = 'none';
-          empty.style.display = '';
-          return;
-        }
-
         tableWrap.style.display = '';
         empty.style.display = 'none';
 
-        files.forEach(file => {
+        resp.files.forEach(file => {
           const tr = document.createElement('tr');
           tr.style.borderBottom = '1px solid #f1f5f9';
 
@@ -206,8 +256,7 @@
       })
       .catch(err => {
         console.error('Error loading scan files:', err);
-        document.getElementById('tableWrap').style.display = 'none';
-        document.getElementById('tableEmpty').style.display = '';
+        showEmptyState('error', 'Не удалось загрузить данные', 'Проверьте соединение или попробуйте позже');
       });
   }
 
