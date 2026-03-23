@@ -37,6 +37,7 @@
   <div class="illu">
     <button class="btn" id="loadBtn">Load new rules</button>
     <button class="btn" id="chooseBtn">Choose the rules</button>
+    <button class="btn" id="createUserBtn">Create user</button>
 
   </div>
   
@@ -159,6 +160,34 @@ loadBtn.addEventListener("click", () => {
         });
 });
   window.location.href = '/settings';
+})
+
+createUserBtn.addEventListener("click", () => {
+  document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/check-auth')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.authenticated) {
+                enterBtn.style.display = 'none';
+                replaceTxt.style.display = 'inline';
+                replaceTxt.textContent = data.email;
+            } else {
+                enterBtn.style.display = '';
+                replaceTxt.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking auth status:', error);
+            enterBtn.style.display = '';
+            replaceTxt.style.display = 'none';
+        });
+});
+  window.location.href = '/register';
 })
 
 chooseBtn.addEventListener("click", () => {
