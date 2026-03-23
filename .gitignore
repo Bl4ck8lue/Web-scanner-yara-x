@@ -1,0 +1,4 @@
+script/rules/main.cvd
+script/rules/main.mdb
+script/rules/*.cvd
+script/rules/*.mdb

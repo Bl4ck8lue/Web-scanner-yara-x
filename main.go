@@ -4,7 +4,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -34,14 +37,35 @@ var (
 	concurrency = 4
 	sem         = make(chan struct{}, 4)
 
-	rulesPath            = "./rules/"
-	scanTimeout          = 90 * time.Second
+	rulesPath          = "./rules/"
+	scanTimeout        = 90 * time.Second
 	archiveScanTimeout = 10 * time.Minute // отдельный таймаут для архивов
 )
 
 // archiveSem ограничивает число одновременно запущенных процессов yr при
 // сканировании архива. Инициализируется в main() на основе числа CPU.
 var archiveSem chan struct{}
+
+// fileStore хранит сведения о загруженных файлах, чтобы их можно было
+// вернуть пользователю или переместить в карантин после сканирования.
+type storedFileMeta struct {
+	ID             string
+	Email          string
+	OriginalName   string
+	OriginalPath   string    // путь к файлу на клиентском ПК (из FormData)
+	UploadPath     string
+	QuarantinePath string
+	ThreatsList    string    // угрозы через "|", заполняется после сканирования
+	Quarantined    bool
+	CreatedAt      time.Time
+}
+
+var fileStore = struct {
+	sync.RWMutex
+	m map[string]*storedFileMeta
+}{
+	m: make(map[string]*storedFileMeta),
+}
 
 func main() {
 	// Разрешаем не более max(1, GOMAXPROCS-1) одновременных процессов yr,
@@ -71,6 +95,8 @@ func main() {
 	http.HandleFunc("/road", roadHandler)
 	http.HandleFunc("/history", histHandler)
 	http.HandleFunc("/api/scanfiles", scanfilesHandler)
+	http.HandleFunc("/api/restore-file", restoreFileHandler)
+	http.HandleFunc("/api/quarantine-file", quarantineFileHandler)
 
 	fmt.Println("Starting server at :8025")
 	if err := http.ListenAndServe(":8025", nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -80,17 +106,18 @@ func main() {
 
 // scanPeriodStatus — результат серверного анализа периода, возвращается фронтенду.
 // status:
-//   "ok"            — есть записи, files заполнен
-//   "empty"         — период корректный, но записей нет
-//   "future"        — весь выбранный период ещё не наступил
-//   "no_data_yet"   — период в далёком прошлом, до начала работы сервиса
+//
+//	"ok"            — есть записи, files заполнен
+//	"empty"         — период корректный, но записей нет
+//	"future"        — весь выбранный период ещё не наступил
+//	"no_data_yet"   — период в далёком прошлом, до начала работы сервиса
 type scanPeriodStatus struct {
-	Status      string           `json:"status"`           // итоговый код
-	Message     string           `json:"message"`          // человекочитаемый текст
-	Hint        string           `json:"hint"`             // подсказка для пользователя
-	TotalScans  int              `json:"total_scans"`      // всего записей за период
-	TotalThreats int             `json:"total_threats"`    // сумма угроз за период
-	Files       []map[string]any `json:"files"`            // строки таблицы (может быть nil)
+	Status       string           `json:"status"`        // итоговый код
+	Message      string           `json:"message"`       // человекочитаемый текст
+	Hint         string           `json:"hint"`          // подсказка для пользователя
+	TotalScans   int              `json:"total_scans"`   // всего записей за период
+	TotalThreats int              `json:"total_threats"` // сумма угроз за период
+	Files        []map[string]any `json:"files"`         // строки таблицы (может быть nil)
 }
 
 func scanfilesHandler(w http.ResponseWriter, r *http.Request) {
@@ -381,7 +408,6 @@ func loadingHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-
 // ruleContentHandler — GET /api/rule-content?name=<filename>
 // Returns the text content of a YARA rule file from ./rules/
 func ruleContentHandler(w http.ResponseWriter, r *http.Request) {
@@ -538,6 +564,274 @@ func copyFile(src, dst string) error {
 	defer out.Close()
 
 	_, err = io.Copy(out, in)
+	return err
+}
+
+func ensureQuarantineKey() ([]byte, error) {
+	keyPath := "./.quarantine.key"
+	if data, err := os.ReadFile(keyPath); err == nil {
+		if len(data) == 32 {
+			return data, nil
+		}
+	}
+
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(keyPath, key, 0600); err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func encryptBytes(plaintext []byte) ([]byte, error) {
+	key, err := ensureQuarantineKey()
+	if err != nil {
+		return nil, err
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+}
+
+func decryptBytes(ciphertext []byte) ([]byte, error) {
+	key, err := ensureQuarantineKey()
+	if err != nil {
+		return nil, err
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+	nonce, enc := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	return gcm.Open(nil, nonce, enc, nil)
+}
+
+func newScanID() string {
+	b := make([]byte, 12)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
+
+func registerUploadedFile(email, originalName, originalPath string, data []byte) (string, string, error) {
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		return "", "", err
+	}
+	id := newScanID()
+	safeName := filepath.Base(originalName)
+	uploadPath := filepath.Join(uploadDir, id+"_"+safeName)
+	if err := os.WriteFile(uploadPath, data, 0644); err != nil {
+		return "", "", err
+	}
+	fileStore.Lock()
+	fileStore.m[id] = &storedFileMeta{
+		ID:             id,
+		Email:          email,
+		OriginalName:   safeName,
+		OriginalPath:   originalPath,
+		UploadPath:     uploadPath,
+		QuarantinePath: filepath.Join("./quarantine", id+"_"+safeName+".enc"),
+		CreatedAt:      time.Now(),
+	}
+	fileStore.Unlock()
+	return id, uploadPath, nil
+}
+
+func getStoredFile(id string) (*storedFileMeta, bool) {
+	fileStore.RLock()
+	defer fileStore.RUnlock()
+	m, ok := fileStore.m[id]
+	return m, ok
+}
+
+func quarantineStoredFile(meta *storedFileMeta) error {
+	if meta == nil {
+		return errors.New("missing file metadata")
+	}
+	if meta.Quarantined {
+		return nil
+	}
+
+	plain, err := os.ReadFile(meta.UploadPath)
+	if err != nil {
+		return err
+	}
+	encrypted, err := encryptBytes(plain)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(meta.QuarantinePath), 0755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(meta.QuarantinePath, encrypted, 0600); err != nil {
+		return err
+	}
+
+	if err := os.Remove(meta.UploadPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	meta.Quarantined = true
+	return nil
+}
+
+func restoreFileHandler(w http.ResponseWriter, r *http.Request) {
+	if _, err := r.Cookie("email"); err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	scanID := r.URL.Query().Get("scan_id")
+	if scanID == "" {
+		http.Error(w, "missing scan_id", http.StatusBadRequest)
+		return
+	}
+
+	meta, ok := getStoredFile(scanID)
+	if !ok {
+		http.Error(w, "file not found", http.StatusNotFound)
+		return
+	}
+
+	cookie, err := r.Cookie("email")
+	if err != nil || cookie.Value != meta.Email {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	var data []byte
+	if meta.Quarantined {
+		if meta.QuarantinePath == "" {
+			http.Error(w, "quarantine path is missing", http.StatusInternalServerError)
+			return
+		}
+		encData, err := os.ReadFile(meta.QuarantinePath)
+		if err != nil {
+			http.Error(w, "cannot read quarantined file: "+err.Error(), http.StatusNotFound)
+			return
+		}
+		data, err = decryptBytes(encData)
+		if err != nil {
+			http.Error(w, "cannot decrypt quarantined file: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		data, err = os.ReadFile(meta.UploadPath)
+		if err != nil {
+			http.Error(w, "cannot read file: "+err.Error(), http.StatusNotFound)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", meta.OriginalName))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
+func quarantineFileHandler(w http.ResponseWriter, r *http.Request) {
+	if _, err := r.Cookie("email"); err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var body struct {
+		ScanID string `json:"scan_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	if body.ScanID == "" {
+		http.Error(w, "missing scan_id", http.StatusBadRequest)
+		return
+	}
+
+	meta, ok := getStoredFile(body.ScanID)
+	if !ok {
+		http.Error(w, "file not found", http.StatusNotFound)
+		return
+	}
+
+	cookie, err := r.Cookie("email")
+	if err != nil || cookie.Value != meta.Email {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	if err := quarantineStoredFile(meta); err != nil {
+		http.Error(w, "cannot quarantine file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Пишем запись в таблицу scanVPO
+	quarantinedAt := time.Now()
+	if err := addScanVPO(
+		meta.OriginalName,
+		meta.OriginalPath,
+		meta.QuarantinePath,
+		meta.ThreatsList,
+		quarantinedAt,
+		cookie.Value,
+	); err != nil {
+		log.Printf("addScanVPO error: %v", err)
+		// Не прерываем ответ — запись в лог, карантин уже выполнен
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"ok":          true,
+		"scan_id":     body.ScanID,
+		"quarantined": true,
+	})
+}
+
+// addScanVPO записывает информацию о помещённом в карантин файле в таблицу scanVPO.
+// DDL для таблицы:
+//
+//	CREATE TABLE scanVPO (
+//	    id               SERIAL PRIMARY KEY,
+//	    filename         TEXT        NOT NULL,
+//	    original_path    TEXT        NOT NULL DEFAULT '',
+//	    quarantine_path  TEXT        NOT NULL,
+//	    threats          TEXT        NOT NULL DEFAULT '',
+//	    quarantined_at   TIMESTAMPTZ NOT NULL,
+//	    quarantined_by   TEXT        NOT NULL
+//	);
+func addScanVPO(filename, originalPath, quarantinePath, threats string, quarantinedAt time.Time, quarantinedBy string) error {
+	conn, err := pgx.Connect(context.Background(), "postgres://ilya:4suh12iiyu@localhost:5432/web_scanner")
+	if err != nil {
+		return fmt.Errorf("db connect: %w", err)
+	}
+	defer conn.Close(context.Background())
+
+	_, err = conn.Exec(context.Background(),
+		`INSERT INTO scanVPO (filename, original_path, quarantine_path, threats, quarantined_at, quarantined_by)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		filename, originalPath, quarantinePath, threats, quarantinedAt, quarantinedBy,
+	)
 	return err
 }
 
@@ -874,11 +1168,10 @@ func addScanFiles(email string, filename string, size string, date string, threa
 	}
 }
 
-
 // ScanResult содержит результат проверки одного файла правилами YARA.
 type ScanResult struct {
-	File     string   // имя проверяемого файла
-	Threats  []string // список сработавших правил
+	File    string   // имя проверяемого файла
+	Threats []string // список сработавших правил
 }
 
 // yaraScanOutput — структура JSON, которую выводит `yr scan --output-format json`.
@@ -1048,7 +1341,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	rules := r.FormValue("rules")
 	size := r.FormValue("size")
 
-	// Читаем файл целиком — нужен для MD5 и возможной распаковки архива
+	// Читаем файл целиком — нужен для MD5, сохранения на сервере и анализа
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, "failed to read uploaded file", http.StatusInternalServerError)
@@ -1058,6 +1351,12 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	// MD5 считается на стороне сервера
 	rawHash := md5.Sum(fileBytes)
 	fileHash := hex.EncodeToString(rawHash[:])
+
+	c, err := r.Cookie("email")
+	if err != nil || c.Value == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// Семафор параллелизма
 	select {
@@ -1079,6 +1378,15 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 
 	fullRulesPath := rulesPath + rules
 
+	// Читаем путь к файлу на клиентском ПК (браузер передаёт через FormData)
+	originalPath := r.FormValue("original_path")
+
+	// Сохраняем загруженный файл на сервере для последующего возврата/карантина.
+	scanID, uploadPath, err := registerUploadedFile(c.Value, filename, originalPath, fileBytes)
+	if err != nil {
+		http.Error(w, "internal error creating upload record", http.StatusInternalServerError)
+		return
+	}
 	// --- Сканирование: ZIP-архив или обычный файл ---
 	var scanResults []ScanResult
 
@@ -1091,21 +1399,7 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		scanResults = archiveResults
 	} else {
-		// Обычный файл — сохраняем на диск и сканируем
-		tmp, err := os.Create(filename)
-		if err != nil {
-			http.Error(w, "internal error creating temp file", http.StatusInternalServerError)
-			return
-		}
-		defer tmp.Close()
-
-		if _, err := tmp.Write(fileBytes); err != nil {
-			http.Error(w, "failed to save uploaded file", http.StatusInternalServerError)
-			return
-		}
-		tmp.Close()
-
-		res, err := runYaraScan(ctx, fullRulesPath, filename)
+		res, err := runYaraScan(ctx, fullRulesPath, uploadPath)
 		if err != nil {
 			log.Printf("yara scan error: %v", err)
 		}
@@ -1154,8 +1448,15 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	threatsList := strings.Join(threatNames, "|")
 
+	// Сохраняем список угроз в meta, чтобы quarantineFileHandler мог записать его в БД
+	if meta, ok := getStoredFile(scanID); ok {
+		fileStore.Lock()
+		meta.ThreatsList = threatsList
+		fileStore.Unlock()
+	}
+
 	currentTime := time.Now()
-	c, err := r.Cookie("email")
+	c, err = r.Cookie("email")
 	if err == nil {
 		addScanFiles(c.Value, filename, size, currentTime.Format("01-02-2006"), threatsCount, threatsList)
 	}
@@ -1165,8 +1466,9 @@ func scanHandler(w http.ResponseWriter, r *http.Request) {
 		"output":        outputStr,
 		"hash":          fileHash,
 		"threats_count": threatsCount,
+		"scan_id":       scanID,
+		"file_name":     filename,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
-
